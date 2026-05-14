@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>P&A Dashboard · Wooarabin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --surface: #ffffff;
+    --surface-2: #f4f3ee;
+    --ink: #1a1a1a;
+    --ink-2: #3a3a3a;
+    --mute: #8a8780;
+    --line: #e8e6df;
+    --line-strong: #d4d1c7;
+    --accent: #4a6fa5;
+    --accent-soft: #e8eef7;
+    --green: #5a8f5e;
+    --green-soft: #e8f0e9;
+    --amber: #c89958;
+    --amber-soft: #f7eedb;
+    --red: #c66666;
+    --red-soft: #f4dede;
+    --lavender: #a890c2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background-image:
+      radial-gradient(ellipse 800px 600px at 10% -10%, rgba(168, 144, 194, 0.08), transparent 50%),
+      radial-gradient(ellipse 800px 600px at 100% 110%, rgba(74, 111, 165, 0.06), transparent 50%);
+    min-height: 100vh;
+  }
+  .container { max-width: 1600px; margin: 0 auto; padding: 32px 40px 80px; }
+
+  /* Header */
+  header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding-bottom: 28px; border-bottom: 1px solid var(--line);
+    margin-bottom: 36px; gap: 24px; flex-wrap: wrap;
+  }
+  .logo-block { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+  .logo {
+    font-family: 'Instrument Serif', serif;
+    font-weight: 400;
+    font-size: 42px;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .logo em { font-style: italic; color: var(--accent); }
+  .subtitle {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--mute);
+    padding-bottom: 6px;
+    font-weight: 500;
+  }
+  .upload-block {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .file-label {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 11px 20px;
+    background: var(--ink); color: white;
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    cursor: pointer; border: none;
+    border-radius: 999px;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .file-label:hover { background: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(74, 111, 165, 0.2); }
+  .file-label svg { width: 14px; height: 14px; }
+  #fileInput { display: none; }
+  .file-name {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--mute);
+    max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 100px 20px;
+    border: 1px dashed var(--line-strong);
+    background: var(--surface);
+    border-radius: 16px;
+  }
+  .empty-state h2 {
+    font-family: 'Instrument Serif', serif;
+    font-weight: 400;
+    font-size: 36px;
+    margin-bottom: 14px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .empty-state p {
+    color: var(--mute);
+    font-size: 14px;
+    max-width: 500px;
+    margin: 0 auto 24px;
+  }
+  .empty-state .hint {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* Meta strip */
+  .meta-strip {
+    display: flex; gap: 28px; align-items: center;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 32px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--mute);
+    flex-wrap: wrap;
+    font-weight: 500;
+  }
+  .meta-strip strong { color: var(--ink); font-weight: 600; }
+
+  /* KPI cards */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 20px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    min-height: 140px;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .kpi:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
+  .kpi-label {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--mute);
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+  .kpi-value {
+    font-family: 'Instrument Serif', serif;
+    font-weight: 400;
+    font-size: 32px;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    color: var(--ink);
+  }
+  .kpi-sub {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    color: var(--mute);
+    margin-top: 8px;
+    letter-spacing: 0.04em;
+  }
+  .kpi.accent .kpi-value { color: var(--accent); }
+  .kpi.good { background: var(--green-soft); border-color: rgba(90, 143, 94, 0.2); }
+  .kpi.good .kpi-value { color: var(--green); }
+  .kpi.warn { background: var(--amber-soft); border-color: rgba(200, 153, 88, 0.25); }
+  .kpi.warn .kpi-value { color: var(--amber); }
+  .kpi.bad { background: var(--red-soft); border-color: rgba(198, 102, 102, 0.2); }
+  .kpi.bad .kpi-value { color: var(--red); }
+
+  /* Section */
+  .section { margin-bottom: 48px; }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    gap: 20px; flex-wrap: wrap;
+  }
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-weight: 400;
+    font-size: 28px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .section-title .num {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    margin-right: 14px;
+    vertical-align: middle;
+    letter-spacing: 0.12em;
+    font-weight: 500;
+  }
+  .filter-group {
+    display: inline-flex; gap: 0; align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+  }
+  .filter-group > span {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--mute);
+    margin: 0 10px 0 6px;
+    font-weight: 500;
+  }
+  .filter-btn {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 7px 14px;
+    border: none;
+    background: transparent;
+    color: var(--mute);
+    cursor: pointer;
+    border-radius: 999px;
+    transition: all 0.2s ease;
+    font-weight: 500;
+  }
+  .filter-btn:hover { color: var(--ink); }
+  .filter-btn.active {
+    background: var(--ink); color: white;
+  }
+
+  /* Tables */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 14px;
+  }
+  table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+  th {
+    text-align: left;
+    padding: 14px 14px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--mute);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  th:first-child { border-top-left-radius: 14px; }
+  th:last-child { border-top-right-radius: 14px; }
+  th.num, td.num { text-align: right; font-family: 'Geist Mono', monospace; }
+  th.center, td.center { text-align: center; }
+  td {
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+    vertical-align: middle;
+    color: var(--ink-2);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface-2); }
+  td.name { font-weight: 600; font-family: 'Geist'; color: var(--ink); }
+  td.retailer-tag {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mute);
+    font-weight: 500;
+  }
+  .achievement {
+    font-family: 'Geist Mono', monospace;
+    font-weight: 600;
+  }
+  .achievement.tier-90 { color: var(--green); }
+  .achievement.tier-85 { color: #6a9c54; }
+  .achievement.tier-80 { color: var(--amber); }
+  .achievement.tier-low { color: var(--red); }
+
+  /* Badges */
+  .badges { display: inline-flex; gap: 4px; }
+  .badge {
+    font-family: 'Geist Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 8px;
+    border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 3px;
+  }
+  .badge.b90 { background: var(--green-soft); color: var(--green); }
+  .badge.b85 { background: #ecf3e6; color: #6a9c54; }
+  .badge.b80 { background: var(--amber-soft); color: var(--amber); }
+  .badge.b-inherited { background: var(--surface-2); color: var(--mute); border: 1px solid var(--line); }
+  .badge.b-none { color: var(--mute); }
+
+  /* Charts */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+  }
+  .chart-card h3 {
+    font-family: 'Instrument Serif', serif;
+    font-weight: 400;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    margin-bottom: 18px;
+    color: var(--ink);
+  }
+  .chart-host { position: relative; height: 320px; }
+  .chart-host.tall { height: 380px; }
+
+  /* Legend */
+  .legend {
+    display: flex; gap: 18px; margin-top: 14px; flex-wrap: wrap;
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mute);
+    font-weight: 500;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+
+  @media (max-width: 1200px) {
+    .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+    .chart-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .container { padding: 20px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .logo { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo-block">
+      <div class="logo">DG's <em>Insight Lab</em></div>
+      <div class="subtitle">P&A Dashboard · Retailer Progress</div>
+    </div>
+    <div class="upload-block">
+      <label class="file-label" for="fileInput">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Excel
+      </label>
+      <input type="file" id="fileInput" accept=".xlsx,.xlsm" />
+      <span class="file-name" id="fileName">no file selected</span>
+    </div>
+  </header>
+
+  <div id="emptyState" class="empty-state">
+    <h2>Upload your tracking file</h2>
+    <p>FY27_P_A_Dashboard 형식의 엑셀 파일을 업로드하면 지점별 / 리테일러사별 진척도, 예상 마감치, 보너스·수당 자격을 자동으로 분석합니다.</p>
+    <div class="hint">supported · .xlsx / .xlsm with sheets "0. Target" + "1. Monthly"</div>
+  </div>
+
+  <div id="dashboard" style="display:none">
+    <div class="meta-strip" id="metaStrip"></div>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title"><span class="num">01</span>Overview</h2>
+      </div>
+      <div class="kpi-grid" id="kpiGrid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title"><span class="num">02</span>By Retailer</h2>
+        <div class="filter-group">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--mute);margin-right:4px;">Mode</span>
+          <button class="filter-btn active" data-mode="month" data-target="retailer">Month</button>
+          <button class="filter-btn" data-mode="quarter" data-target="retailer">Quarter</button>
+          <button class="filter-btn" data-mode="fytd" data-target="retailer">FYTD</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="retailerTable"></table>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:#5a8f5e"></span>≥90% (Bonus 10%)</span>
+        <span><span class="dot" style="background:#6a9c54"></span>≥85% (Allowance)</span>
+        <span><span class="dot" style="background:#c89958"></span>≥80% (Bonus 5%)</span>
+        <span><span class="dot" style="background:#c66666"></span>&lt;80%</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title"><span class="num">03</span>By Workshop</h2>
+        <div class="filter-group">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--mute);margin-right:4px;">Mode</span>
+          <button class="filter-btn active" data-mode="month" data-target="workshop">Month</button>
+          <button class="filter-btn" data-mode="quarter" data-target="workshop">Quarter</button>
+          <button class="filter-btn" data-mode="fytd" data-target="workshop">FYTD</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="workshopTable"></table>
+      </div>
+      <div class="legend">
+        <span style="color:var(--ink-2)">자격 충족 = 본인 지점 OR 소속 리테일러사 합산이 기준 충족</span>
+        <span><strong style="color:var(--ink)">●</strong> direct</span>
+        <span><strong style="color:var(--mute)">○</strong> via retailer</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title"><span class="num">04</span>Charts</h2>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card" style="grid-column: 1/-1">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;gap:16px;flex-wrap:wrap">
+            <h3 style="margin-bottom:0">Daily cumulative progress</h3>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-family:'Geist Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--mute);font-weight:500">Entity</span>
+              <select id="entitySelect" style="font-family:'Geist',sans-serif;font-size:13px;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);cursor:pointer;min-width:200px"></select>
+            </div>
+          </div>
+          <div id="entityDetail" style="display:flex;gap:24px;margin-bottom:18px;padding:14px 18px;background:var(--surface-2);border-radius:10px;flex-wrap:wrap;font-family:'Geist Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--mute)"></div>
+          <div class="chart-host tall"><canvas id="chartProgress"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Forecast achievement · by Retailer</h3>
+          <div class="chart-host"><canvas id="chartRetailer"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Forecast achievement · by Workshop</h3>
+          <div class="chart-host"><canvas id="chartWorkshop"></canvas></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+// ===== Constants =====
+const MONTHS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+const QUARTER_OF = { Apr:1,May:1,Jun:1, Jul:2,Aug:2,Sep:2, Oct:3,Nov:3,Dec:3, Jan:4,Feb:4,Mar:4 };
+const MONTHS_IN_Q = { 1:['Apr','May','Jun'], 2:['Jul','Aug','Sep'], 3:['Oct','Nov','Dec'], 4:['Jan','Feb','Mar'] };
+
+// ===== State =====
+let STATE = null;
+
+// Register Chart.js annotation plugin if available
+if (typeof Chart !== 'undefined' && typeof window['chartjs-plugin-annotation'] !== 'undefined') {
+  Chart.register(window['chartjs-plugin-annotation']);
+}
+
+// ===== Helpers =====
+const fmtMoney = (n) => {
+  if (n === null || n === undefined || isNaN(n)) return '–';
+  if (Math.abs(n) >= 1e8) return (n/1e8).toFixed(2) + '억';
+  if (Math.abs(n) >= 1e4) return (n/1e4).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '만';
+  return Math.round(n).toLocaleString();
+};
+const fmtPct = (r) => {
+  if (r === null || r === undefined || isNaN(r) || !isFinite(r)) return '–';
+  return (r*100).toFixed(1) + '%';
+};
+const tierClass = (rate) => {
+  if (rate === null || rate === undefined || isNaN(rate)) return 'tier-low';
+  if (rate >= 0.90) return 'tier-90';
+  if (rate >= 0.85) return 'tier-85';
+  if (rate >= 0.80) return 'tier-80';
+  return 'tier-low';
+};
+const colIdx = (letters) => { // 'A'->0, 'BZ'->77
+  let n = 0;
+  for (const c of letters) n = n*26 + (c.charCodeAt(0)-64);
+  return n - 1;
+};
+
+// ===== Parse =====
+function parseWorkbook(wb) {
+  const wsTarget = wb.Sheets['0. Target'];
+  const wsMonthly = wb.Sheets['1. Monthly'];
+  if (!wsTarget || !wsMonthly) {
+    throw new Error('"0. Target" 또는 "1. Monthly" 시트를 찾을 수 없습니다.');
+  }
+  // blankrows: true → 빈 행도 유지하여 인덱스가 어긋나지 않게 함 (iPad Safari 호환)
+  const tgtRows = XLSX.utils.sheet_to_json(wsTarget, { header: 1, defval: null, blankrows: true, raw: true });
+  const monRows = XLSX.utils.sheet_to_json(wsMonthly, { header: 1, defval: null, blankrows: true, raw: true });
+
+  // ---- 이름이 텍스트인지 확인하는 헬퍼
+  const isLikelyName = (v) => {
+    if (v === null || v === undefined || v === '') return false;
+    const s = String(v).trim();
+    if (s === '') return false;
+    // 헤더성 단어 제외
+    if (['Workshop','Retailer','Budget','Total','Month'].includes(s)) return false;
+    // 순수 숫자는 이름이 아님 (큰 숫자가 잘못 들어오는 케이스)
+    if (/^\d+(\.\d+)?$/.test(s)) return false;
+    return true;
+  };
+
+  // ---- Workshop 영역 탐색: B열에서 첫 이름부터 'Budget' 나올 때까지
+  const workshops = [];
+  let inWorkshopBlock = false;
+  for (let r = 0; r < tgtRows.length; r++) {
+    const row = tgtRows[r];
+    if (!row) continue;
+    const b = row[colIdx('B')];
+    if (b === 'Workshop') { inWorkshopBlock = true; continue; }
+    if (!inWorkshopBlock) continue;
+    if (b === 'Budget' || b === 'Retailer') break; // workshop 블록 끝
+    if (!isLikelyName(b)) continue;
+    const name = String(b).trim();
+    const budgetByMonth = {};
+    const actualByMonth = {};
+    MONTHS.forEach((m, i) => {
+      budgetByMonth[m] = Number(row[colIdx('C')+i]) || 0;
+      actualByMonth[m] = Number(row[colIdx('CA')+i]) || 0;
+    });
+    workshops.push({
+      name,
+      retailer: name.split(' ')[0],
+      budgetByMonth, actualByMonth,
+      budgetTotal: Number(row[colIdx('S')]) || 0,
+      actualTotal: Number(row[colIdx('CQ')]) || 0,
+    });
+  }
+
+  // ---- Retailer 영역 탐색: 'Retailer' 헤더 이후
+  const retailers = [];
+  let inRetailerBlock = false;
+  let retailerHeaderPassed = false;
+  for (let r = 0; r < tgtRows.length; r++) {
+    const row = tgtRows[r];
+    if (!row) continue;
+    const b = row[colIdx('B')];
+    if (b === 'Retailer') { inRetailerBlock = true; retailerHeaderPassed = false; continue; }
+    if (!inRetailerBlock) continue;
+    if (b === 'Total') break;
+    // Retailer 헤더 다음 첫 행은 'Apr/May/...' 헤더이므로 건너뜀
+    if (!isLikelyName(b)) continue;
+    const name = String(b).trim();
+    const budgetByMonth = {};
+    const actualByMonth = {};
+    MONTHS.forEach((m, i) => {
+      budgetByMonth[m] = Number(row[colIdx('C')+i]) || 0;
+      actualByMonth[m] = Number(row[colIdx('CA')+i]) || 0;
+    });
+    retailers.push({
+      name,
+      budgetByMonth, actualByMonth,
+      budgetTotal: Number(row[colIdx('S')]) || 0,
+      actualTotal: Number(row[colIdx('CQ')]) || 0,
+    });
+  }
+
+  // ---- Monthly meta (row 2)
+  const monthlyRow2 = monRows[1] || [];
+  const currentMonth = monthlyRow2[colIdx('C')];
+  const wd = Number(monthlyRow2[colIdx('G')]) || 0;
+  const today = Number(monthlyRow2[colIdx('J')]) || 0;
+  const wdByMonth = {};
+  MONTHS.forEach((m, i) => {
+    wdByMonth[m] = Number(monthlyRow2[colIdx('N')+i]) || 0;
+  });
+
+  // ---- Daily actuals: AE column에서 이름 찾기 (워크샵명 기반)
+  const dailyActuals = {};
+  const workshopNames = new Set(workshops.map(w => w.name));
+  for (let r = 0; r < monRows.length; r++) {
+    const row = monRows[r];
+    if (!row) continue;
+    const ae = row[colIdx('AE')];
+    if (!ae) continue;
+    const name = String(ae).trim();
+    if (!workshopNames.has(name)) continue;
+    const arr = [];
+    for (let d = 0; d < 23; d++) {
+      arr.push(Number(row[colIdx('AF')+d]) || 0);
+    }
+    dailyActuals[name] = arr;
+  }
+
+  return {
+    currentMonth,
+    currentMonthIdx: MONTHS.indexOf(currentMonth),
+    wd, today,
+    wdByMonth,
+    workshops, retailers, dailyActuals,
+  };
+}
+
+// ===== Calculations =====
+function currentMonthMetricsForEntity(entity, S) {
+  const cm = S.currentMonth;
+  const budgetMonth = entity.budgetByMonth[cm] || 0;
+  const actualMonth = entity.actualByMonth[cm] || 0;
+  const dailyTarget = S.wd > 0 ? budgetMonth / S.wd : 0;
+  const dailyAvg = S.today > 0 ? actualMonth / S.today : 0;
+  const forecast = dailyAvg * S.wd;
+  const forecastRate = budgetMonth > 0 ? forecast / budgetMonth : null;
+  const currentRate = budgetMonth > 0 ? actualMonth / budgetMonth : null;
+  return { budgetMonth, actualMonth, dailyTarget, dailyAvg, forecast, forecastRate, currentRate };
+}
+
+function quarterMetricsForEntity(entity, S) {
+  const cm = S.currentMonth;
+  const q = QUARTER_OF[cm];
+  const months = MONTHS_IN_Q[q];
+  let budget = 0, actual = 0;
+  months.forEach(m => {
+    budget += entity.budgetByMonth[m] || 0;
+    // For the current month, replace "actual" with forecast so the quarter view shows the
+    // expected end-of-quarter rate using current-month forecast.
+    if (m === cm) {
+      const cmm = currentMonthMetricsForEntity(entity, S);
+      actual += cmm.forecast;
+    } else {
+      actual += entity.actualByMonth[m] || 0;
+    }
+  });
+  const rate = budget > 0 ? actual / budget : null;
+  return { budget, actual, rate, quarter: q };
+}
+
+function fytdMetricsForEntity(entity, S) {
+  // FYTD = Apr through current month inclusive. Current month uses forecast.
+  const cmIdx = S.currentMonthIdx;
+  let budget = 0, actual = 0;
+  for (let i = 0; i <= cmIdx; i++) {
+    const m = MONTHS[i];
+    budget += entity.budgetByMonth[m] || 0;
+    if (i === cmIdx) {
+      const cmm = currentMonthMetricsForEntity(entity, S);
+      actual += cmm.forecast;
+    } else {
+      actual += entity.actualByMonth[m] || 0;
+    }
+  }
+  const rate = budget > 0 ? actual / budget : null;
+  return { budget, actual, rate };
+}
+
+// ===== Qualification logic =====
+function eligibility(workshopRate, retailerRate, threshold) {
+  if (workshopRate >= threshold) return 'direct';
+  if (retailerRate >= threshold) return 'inherited';
+  return 'none';
+}
+
+function badgeFor(eligibility, label, cls) {
+  if (eligibility === 'none') return '';
+  if (eligibility === 'direct') return `<span class="badge ${cls}">●${label}</span>`;
+  return `<span class="badge b-inherited">○${label}</span>`;
+}
+
+function renderBadgesEntity(monthRate, quarterRate, fytdRate, retailerQuarterRate, retailerFytdRate, isRetailer) {
+  // Bonus 90 / 85 allowance / Bonus 80 (분기 OR FYTD 충족 시 인정)
+  // For workshop, also inherits via retailer
+  const checks = [
+    { label: '90', cls: 'b90', threshold: 0.90 },
+    { label: '85', cls: 'b85', threshold: 0.85 },
+    { label: '80', cls: 'b80', threshold: 0.80 },
+  ];
+  const badges = [];
+  for (const { label, cls, threshold } of checks) {
+    let elig = 'none';
+    if (quarterRate >= threshold || fytdRate >= threshold) elig = 'direct';
+    else if (!isRetailer && (retailerQuarterRate >= threshold || retailerFytdRate >= threshold)) elig = 'inherited';
+    if (elig !== 'none') badges.push(badgeFor(elig, label, cls));
+  }
+  return badges.length ? `<div class="badges">${badges.join('')}</div>` : '<span class="badge b-none">–</span>';
+}
+
+// ===== Render =====
+function render() {
+  const S = STATE;
+  if (!S) return;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  // Meta strip
+  const elapsedPct = S.wd ? (S.today/S.wd*100).toFixed(1) : '–';
+  document.getElementById('metaStrip').innerHTML = `
+    <span>Period · <strong>FY ${S.currentMonth}</strong></span>
+    <span>Working Days · <strong>${S.today} / ${S.wd}</strong> (${elapsedPct}%)</span>
+    <span>Workshops · <strong>${S.workshops.length}</strong></span>
+    <span>Retailers · <strong>${S.retailers.length}</strong></span>
+  `;
+
+  renderKPIs();
+  renderRetailerTable('month');
+  renderWorkshopTable('month');
+  populateEntitySelector();
+  renderCharts();
+}
+
+function populateEntitySelector() {
+  const S = STATE;
+  const sel = document.getElementById('entitySelect');
+  if (!sel) return;
+  const opts = ['<option value="__total__">Total (전체 합산)</option>'];
+  opts.push('<optgroup label="── Retailers ──">');
+  S.retailers.forEach(r => {
+    opts.push(`<option value="ret::${r.name}">${r.name} (Retailer)</option>`);
+  });
+  opts.push('</optgroup>');
+  opts.push('<optgroup label="── Workshops ──">');
+  S.workshops.forEach(w => {
+    opts.push(`<option value="ws::${w.name}">${w.name}</option>`);
+  });
+  opts.push('</optgroup>');
+  sel.innerHTML = opts.join('');
+  sel.value = '__total__';
+}
+
+function renderKPIs() {
+  const S = STATE;
+  // Total = sum across workshops (same as retailers total)
+  let budget = 0, actual = 0;
+  S.workshops.forEach(w => {
+    budget += w.budgetByMonth[S.currentMonth] || 0;
+    actual += w.actualByMonth[S.currentMonth] || 0;
+  });
+  const dailyTarget = S.wd ? budget / S.wd : 0;
+  const dailyAvg = S.today ? actual / S.today : 0;
+  const forecast = dailyAvg * S.wd;
+  const currentRate = budget ? actual/budget : 0;
+  const forecastRate = budget ? forecast/budget : 0;
+
+  // Quarter & FYTD totals
+  const q = QUARTER_OF[S.currentMonth];
+  const qMonths = MONTHS_IN_Q[q];
+  let qBudget = 0, qActual = 0;
+  qMonths.forEach(m => {
+    S.workshops.forEach(w => {
+      qBudget += w.budgetByMonth[m] || 0;
+      if (m === S.currentMonth) {
+        // use forecast for current month
+        const f = (S.today ? (w.actualByMonth[m]||0)/S.today : 0) * S.wd;
+        qActual += f;
+      } else {
+        qActual += w.actualByMonth[m] || 0;
+      }
+    });
+  });
+  const qRate = qBudget ? qActual/qBudget : 0;
+
+  let fBudget = 0, fActual = 0;
+  for (let i = 0; i <= S.currentMonthIdx; i++) {
+    const m = MONTHS[i];
+    S.workshops.forEach(w => {
+      fBudget += w.budgetByMonth[m] || 0;
+      if (i === S.currentMonthIdx) {
+        const f = (S.today ? (w.actualByMonth[m]||0)/S.today : 0) * S.wd;
+        fActual += f;
+      } else {
+        fActual += w.actualByMonth[m] || 0;
+      }
+    });
+  }
+  const fRate = fBudget ? fActual/fBudget : 0;
+
+  const tier = (r) => r >= 0.90 ? 'good' : r >= 0.85 ? 'good' : r >= 0.80 ? 'warn' : 'bad';
+
+  const cards = [
+    { label: 'Month Budget', value: fmtMoney(budget), sub: S.currentMonth + ' · target', cls: '' },
+    { label: 'Actual to-date', value: fmtMoney(actual), sub: `day ${S.today} cumulative`, cls: 'accent' },
+    { label: 'Daily Target', value: fmtMoney(dailyTarget), sub: `vs avg ${fmtMoney(dailyAvg)}`, cls: '' },
+    { label: 'Forecast', value: fmtMoney(forecast), sub: 'projected month-end', cls: 'accent' },
+    { label: 'Forecast Rate', value: fmtPct(forecastRate), sub: `current ${fmtPct(currentRate)}`, cls: tier(forecastRate) },
+    { label: `Q${q} Forecast Rate`, value: fmtPct(qRate), sub: `quarter-to-date`, cls: tier(qRate) },
+    { label: 'FYTD Forecast Rate', value: fmtPct(fRate), sub: 'year-to-date', cls: tier(fRate) },
+  ];
+  document.getElementById('kpiGrid').innerHTML = cards.map(c => `
+    <div class="kpi ${c.cls}">
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-value">${c.value}</div>
+      <div class="kpi-sub">${c.sub}</div>
+    </div>
+  `).join('');
+}
+
+function renderRetailerTable(mode) {
+  const S = STATE;
+  const rows = S.retailers.map(r => {
+    const m = currentMonthMetricsForEntity(r, S);
+    const q = quarterMetricsForEntity(r, S);
+    const f = fytdMetricsForEntity(r, S);
+    return { r, m, q, f };
+  });
+
+  // Header changes based on mode
+  let header;
+  if (mode === 'month') {
+    header = `<thead><tr>
+      <th>Retailer</th>
+      <th class="num">Month Budget</th>
+      <th class="num">Actual</th>
+      <th class="num">Daily Target</th>
+      <th class="num">Daily Avg</th>
+      <th class="num">Forecast</th>
+      <th class="num">Current %</th>
+      <th class="num">Forecast %</th>
+      <th class="center">Qualification</th>
+    </tr></thead>`;
+  } else if (mode === 'quarter') {
+    header = `<thead><tr>
+      <th>Retailer</th>
+      <th class="num">Q Budget</th>
+      <th class="num">Q Actual (incl. forecast)</th>
+      <th class="num">Q Rate</th>
+      <th class="num">Month Forecast %</th>
+      <th class="num">FYTD %</th>
+      <th class="center">Qualification</th>
+    </tr></thead>`;
+  } else {
+    header = `<thead><tr>
+      <th>Retailer</th>
+      <th class="num">FYTD Budget</th>
+      <th class="num">FYTD Actual (incl. forecast)</th>
+      <th class="num">FYTD Rate</th>
+      <th class="num">Q Rate</th>
+      <th class="num">Month Forecast %</th>
+      <th class="center">Qualification</th>
+    </tr></thead>`;
+  }
+
+  const body = rows.map(({ r, m, q, f }) => {
+    const badges = renderBadgesEntity(m.forecastRate, q.rate, f.rate, q.rate, f.rate, true);
+    if (mode === 'month') {
+      return `<tr>
+        <td class="name">${r.name}</td>
+        <td class="num">${fmtMoney(m.budgetMonth)}</td>
+        <td class="num">${fmtMoney(m.actualMonth)}</td>
+        <td class="num">${fmtMoney(m.dailyTarget)}</td>
+        <td class="num">${fmtMoney(m.dailyAvg)}</td>
+        <td class="num">${fmtMoney(m.forecast)}</td>
+        <td class="num achievement ${tierClass(m.currentRate)}">${fmtPct(m.currentRate)}</td>
+        <td class="num achievement ${tierClass(m.forecastRate)}">${fmtPct(m.forecastRate)}</td>
+        <td class="center">${badges}</td>
+      </tr>`;
+    } else if (mode === 'quarter') {
+      return `<tr>
+        <td class="name">${r.name}</td>
+        <td class="num">${fmtMoney(q.budget)}</td>
+        <td class="num">${fmtMoney(q.actual)}</td>
+        <td class="num achievement ${tierClass(q.rate)}">${fmtPct(q.rate)}</td>
+        <td class="num achievement ${tierClass(m.forecastRate)}">${fmtPct(m.forecastRate)}</td>
+        <td class="num achievement ${tierClass(f.rate)}">${fmtPct(f.rate)}</td>
+        <td class="center">${badges}</td>
+      </tr>`;
+    } else {
+      return `<tr>
+        <td class="name">${r.name}</td>
+        <td class="num">${fmtMoney(f.budget)}</td>
+        <td class="num">${fmtMoney(f.actual)}</td>
+        <td class="num achievement ${tierClass(f.rate)}">${fmtPct(f.rate)}</td>
+        <td class="num achievement ${tierClass(q.rate)}">${fmtPct(q.rate)}</td>
+        <td class="num achievement ${tierClass(m.forecastRate)}">${fmtPct(m.forecastRate)}</td>
+        <td class="center">${badges}</td>
+      </tr>`;
+    }
+  }).join('');
+
+  document.getElementById('retailerTable').innerHTML = header + `<tbody>${body}</tbody>`;
+}
+
+function renderWorkshopTable(mode) {
+  const S = STATE;
+  // Need retailer-level rates for inheritance
+  const retailerRates = {};
+  S.retailers.forEach(r => {
+    retailerRates[r.name] = {
+      q: quarterMetricsForEntity(r, S).rate,
+      f: fytdMetricsForEntity(r, S).rate,
+    };
+  });
+
+  const rows = S.workshops.map(w => {
+    const m = currentMonthMetricsForEntity(w, S);
+    const q = quarterMetricsForEntity(w, S);
+    const f = fytdMetricsForEntity(w, S);
+    const rr = retailerRates[w.retailer] || { q: 0, f: 0 };
+    return { w, m, q, f, rr };
+  });
+
+  let header;
+  if (mode === 'month') {
+    header = `<thead><tr>
+      <th>Retailer</th>
+      <th>Workshop</th>
+      <th class="num">Month Budget</th>
+      <th class="num">Actual</th>
+      <th class="num">Daily Target</th>
+      <th class="num">Daily Avg</th>
+      <th class="num">Forecast</th>
+      <th class="num">Current %</th>
+      <th class="num">Forecast %</th>
+      <th class="center">Qualification</th>
+    </tr></thead>`;
+  } else if (mode === 'quarter') {
+    header = `<thead><tr>
+      <th>Retailer</th>
+      <th>Workshop</th>
+      <th class="num">Q Budget</th>
+      <th class="num">Q Actual</th>
+      <th class="num">Q Rate</th>
+      <th class="num">FYTD %</th>
+      <th class="num">Month F. %</th>
+      <th class="center">Qualification</th>
+    </tr></thead>`;
+  } else {
+    header = `<thead><tr>
+      <th>Retailer</th>
+      <th>Workshop</th>
+      <th class="num">FYTD Budget</th>
+      <th class="num">FYTD Actual</th>
+      <th class="num">FYTD Rate</th>
+      <th class="num">Q Rate</th>
+      <th class="num">Month F. %</th>
+      <th class="center">Qualification</th>
+    </tr></thead>`;
+  }
+
+  const body = rows.map(({ w, m, q, f, rr }) => {
+    const badges = renderBadgesEntity(m.forecastRate, q.rate, f.rate, rr.q, rr.f, false);
+    if (mode === 'month') {
+      return `<tr>
+        <td class="retailer-tag">${w.retailer}</td>
+        <td class="name">${w.name}</td>
+        <td class="num">${fmtMoney(m.budgetMonth)}</td>
+        <td class="num">${fmtMoney(m.actualMonth)}</td>
+        <td class="num">${fmtMoney(m.dailyTarget)}</td>
+        <td class="num">${fmtMoney(m.dailyAvg)}</td>
+        <td class="num">${fmtMoney(m.forecast)}</td>
+        <td class="num achievement ${tierClass(m.currentRate)}">${fmtPct(m.currentRate)}</td>
+        <td class="num achievement ${tierClass(m.forecastRate)}">${fmtPct(m.forecastRate)}</td>
+        <td class="center">${badges}</td>
+      </tr>`;
+    } else if (mode === 'quarter') {
+      return `<tr>
+        <td class="retailer-tag">${w.retailer}</td>
+        <td class="name">${w.name}</td>
+        <td class="num">${fmtMoney(q.budget)}</td>
+        <td class="num">${fmtMoney(q.actual)}</td>
+        <td class="num achievement ${tierClass(q.rate)}">${fmtPct(q.rate)}</td>
+        <td class="num achievement ${tierClass(f.rate)}">${fmtPct(f.rate)}</td>
+        <td class="num achievement ${tierClass(m.forecastRate)}">${fmtPct(m.forecastRate)}</td>
+        <td class="center">${badges}</td>
+      </tr>`;
+    } else {
+      return `<tr>
+        <td class="retailer-tag">${w.retailer}</td>
+        <td class="name">${w.name}</td>
+        <td class="num">${fmtMoney(f.budget)}</td>
+        <td class="num">${fmtMoney(f.actual)}</td>
+        <td class="num achievement ${tierClass(f.rate)}">${fmtPct(f.rate)}</td>
+        <td class="num achievement ${tierClass(q.rate)}">${fmtPct(q.rate)}</td>
+        <td class="num achievement ${tierClass(m.forecastRate)}">${fmtPct(m.forecastRate)}</td>
+        <td class="center">${badges}</td>
+      </tr>`;
+    }
+  }).join('');
+
+  document.getElementById('workshopTable').innerHTML = header + `<tbody>${body}</tbody>`;
+}
+
+// ===== Charts =====
+const charts = {};
+
+function renderCharts() {
+  const S = STATE;
+  renderProgressChart();
+
+  // 2) Retailer forecast achievement
+  const retLabels = [];
+  const retRates = [];
+  const retColors = [];
+  S.retailers.forEach(r => {
+    const m = currentMonthMetricsForEntity(r, S);
+    retLabels.push(r.name);
+    const rate = (m.forecastRate || 0) * 100;
+    retRates.push(rate);
+    retColors.push(rate >= 90 ? '#5a8f5e' : rate >= 85 ? '#6a9c54' : rate >= 80 ? '#c89958' : '#c66666');
+  });
+  if (charts.retailer) charts.retailer.destroy();
+  charts.retailer = new Chart(document.getElementById('chartRetailer'), {
+    type: 'bar',
+    data: { labels: retLabels, datasets: [{ data: retRates, backgroundColor: retColors, borderWidth: 0, borderRadius: 6 }] },
+    options: chartBaseOpts({ percent: true, threshold: true, legend: false }),
+  });
+
+  // 3) Workshop forecast achievement
+  const wsLabels = [], wsRates = [], wsColors = [];
+  S.workshops.forEach(w => {
+    const m = currentMonthMetricsForEntity(w, S);
+    wsLabels.push(w.name);
+    const rate = (m.forecastRate || 0) * 100;
+    wsRates.push(rate);
+    wsColors.push(rate >= 90 ? '#5a8f5e' : rate >= 85 ? '#6a9c54' : rate >= 80 ? '#c89958' : '#c66666');
+  });
+  if (charts.workshop) charts.workshop.destroy();
+  charts.workshop = new Chart(document.getElementById('chartWorkshop'), {
+    type: 'bar',
+    data: { labels: wsLabels, datasets: [{ data: wsRates, backgroundColor: wsColors, borderWidth: 0, borderRadius: 6 }] },
+    options: chartBaseOpts({ percent: true, threshold: true, legend: false }),
+  });
+}
+
+function renderProgressChart() {
+  const S = STATE;
+  const sel = document.getElementById('entitySelect');
+  const value = sel ? sel.value : '__total__';
+
+  // Resolve target entity → budget, daily-actuals array, name
+  let entityName, budgetMonth, dailyArr;
+  if (value === '__total__' || !value) {
+    entityName = 'Total';
+    budgetMonth = 0;
+    S.workshops.forEach(w => { budgetMonth += w.budgetByMonth[S.currentMonth] || 0; });
+    dailyArr = Array(23).fill(0);
+    Object.values(S.dailyActuals).forEach(arr => {
+      arr.forEach((v, i) => { dailyArr[i] += v; });
+    });
+  } else if (value.startsWith('ret::')) {
+    const name = value.slice(5);
+    const r = S.retailers.find(x => x.name === name);
+    entityName = `${name} (Retailer)`;
+    budgetMonth = r ? (r.budgetByMonth[S.currentMonth] || 0) : 0;
+    // Sum daily across workshops belonging to this retailer
+    dailyArr = Array(23).fill(0);
+    S.workshops.filter(w => w.retailer === name).forEach(w => {
+      const arr = S.dailyActuals[w.name] || [];
+      arr.forEach((v, i) => { dailyArr[i] += v; });
+    });
+  } else if (value.startsWith('ws::')) {
+    const name = value.slice(4);
+    const w = S.workshops.find(x => x.name === name);
+    entityName = name;
+    budgetMonth = w ? (w.budgetByMonth[S.currentMonth] || 0) : 0;
+    dailyArr = (S.dailyActuals[name] || Array(23).fill(0)).slice();
+  }
+
+  // Daily target cumulative
+  const dailyTarget = S.wd > 0 ? budgetMonth / S.wd : 0;
+  const labels = [], targetCum = [], actualCum = [], forecastCum = [];
+  let acc = 0;
+  for (let d = 1; d <= S.wd; d++) {
+    labels.push(`Day ${d}`);
+    targetCum.push(dailyTarget * d);
+    if (d <= S.today) {
+      acc += dailyArr[d-1] || 0;
+      actualCum.push(acc);
+    } else {
+      actualCum.push(null);
+    }
+  }
+  const dailyAvg = S.today ? acc / S.today : 0;
+  for (let d = 1; d <= S.wd; d++) {
+    if (d < S.today) forecastCum.push(null);
+    else if (d === S.today) forecastCum.push(acc);
+    else forecastCum.push(acc + dailyAvg * (d - S.today));
+  }
+
+  // Update entity detail box
+  const detail = document.getElementById('entityDetail');
+  if (detail) {
+    const forecastEnd = dailyAvg * S.wd;
+    const forecastRate = budgetMonth ? forecastEnd / budgetMonth : 0;
+    const currentRate = budgetMonth ? acc / budgetMonth : 0;
+    detail.innerHTML = `
+      <span>Entity · <strong style="color:var(--ink)">${entityName}</strong></span>
+      <span>Budget · <strong style="color:var(--ink)">${fmtMoney(budgetMonth)}</strong></span>
+      <span>Actual · <strong style="color:var(--ink)">${fmtMoney(acc)}</strong> (${fmtPct(currentRate)})</span>
+      <span>Daily Target · <strong style="color:var(--ink)">${fmtMoney(dailyTarget)}</strong></span>
+      <span>Daily Avg · <strong style="color:var(--ink)">${fmtMoney(dailyAvg)}</strong></span>
+      <span>Forecast · <strong style="color:var(--ink)">${fmtMoney(forecastEnd)}</strong> (<span style="color:${forecastRate>=0.9?'var(--green)':forecastRate>=0.85?'#6a9c54':forecastRate>=0.8?'var(--amber)':'var(--red)'}">${fmtPct(forecastRate)}</span>)</span>
+    `;
+  }
+
+  if (charts.progress) charts.progress.destroy();
+  charts.progress = new Chart(document.getElementById('chartProgress'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Target (cumulative)', data: targetCum, borderColor: '#8a8780', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, tension: 0 },
+        { label: 'Actual', data: actualCum, borderColor: '#4a6fa5', backgroundColor: '#4a6fa5', borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: '#4a6fa5', tension: 0.1 },
+        { label: 'Forecast', data: forecastCum, borderColor: '#a890c2', borderDash: [2,4], borderWidth: 1.5, pointRadius: 0, tension: 0 },
+      ]
+    },
+    options: chartBaseOpts({ yMoney: true }),
+  });
+}
+
+function chartBaseOpts({ yMoney=false, percent=false, threshold=false, legend=true } = {}) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: legend ? {
+        position: 'bottom',
+        labels: { font: { family: 'Geist Mono', size: 10 }, color: '#3a3a3a', boxWidth: 12, boxHeight: 12, usePointStyle: true, pointStyle: 'rectRounded' }
+      } : { display: false },
+      tooltip: {
+        backgroundColor: '#1a1a1a',
+        titleFont: { family: 'Geist Mono', size: 10, weight: 'bold' },
+        bodyFont: { family: 'Geist', size: 12 },
+        padding: 10, displayColors: false, cornerRadius: 6,
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.parsed.y;
+            if (v === null) return '';
+            if (percent) return `${ctx.dataset.label || ''} ${v.toFixed(1)}%`.trim();
+            if (yMoney) return `${ctx.dataset.label || ''} ${fmtMoney(v)}`.trim();
+            return `${ctx.dataset.label || ''} ${v}`.trim();
+          }
+        }
+      },
+      annotation: threshold ? {
+        annotations: {
+          line90: { type: 'line', yMin: 90, yMax: 90, borderColor: '#5a8f5e', borderWidth: 1, borderDash: [4,4] },
+          line85: { type: 'line', yMin: 85, yMax: 85, borderColor: '#6a9c54', borderWidth: 1, borderDash: [4,4] },
+          line80: { type: 'line', yMin: 80, yMax: 80, borderColor: '#c89958', borderWidth: 1, borderDash: [4,4] },
+        }
+      } : undefined,
+    },
+    scales: {
+      x: {
+        grid: { color: '#e8e6df', drawBorder: false },
+        ticks: { font: { family: 'Geist Mono', size: 10 }, color: '#8a8780' }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: '#e8e6df', drawBorder: false },
+        ticks: {
+          font: { family: 'Geist Mono', size: 10 },
+          color: '#8a8780',
+          callback: (v) => percent ? v + '%' : (yMoney ? fmtMoney(v) : v)
+        },
+        suggestedMax: percent ? 120 : undefined,
+      },
+    },
+  };
+}
+
+// ===== Wire up =====
+function showDebugInfo(msg, isError) {
+  const empty = document.getElementById('emptyState');
+  empty.innerHTML = `
+    <h2 style="color:${isError?'#c66666':'var(--ink)'}">${isError?'오류 발생':'진단 정보'}</h2>
+    <div style="text-align:left;max-width:700px;margin:20px auto;padding:20px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;font-family:'Geist Mono',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.7;color:var(--ink-2)">${msg}</div>
+    <div class="hint">파일 다시 업로드: 위 Upload Excel 버튼 클릭</div>
+  `;
+}
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) {
+    showDebugInfo('파일이 선택되지 않았습니다.', true);
+    return;
+  }
+  document.getElementById('fileName').textContent = file.name;
+
+  let stage = '시작';
+  try {
+    stage = '파일 읽기';
+    if (typeof XLSX === 'undefined') {
+      throw new Error('XLSX 라이브러리가 로드되지 않았습니다. 인터넷 연결을 확인하세요.');
+    }
+    const buf = await file.arrayBuffer();
+    stage = `파일 크기 확인 (${(buf.byteLength/1024).toFixed(1)} KB)`;
+    if (buf.byteLength === 0) throw new Error('파일이 비어있습니다.');
+
+    stage = '엑셀 파싱';
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const sheetNames = wb.SheetNames || [];
+    stage = `시트 목록 확인: [${sheetNames.join(' | ')}]`;
+
+    if (!wb.Sheets['0. Target']) {
+      throw new Error(`"0. Target" 시트를 찾을 수 없습니다.\n발견된 시트 목록:\n${sheetNames.map(n=>'  • "'+n+'"').join('\n')}`);
+    }
+    if (!wb.Sheets['1. Monthly']) {
+      throw new Error(`"1. Monthly" 시트를 찾을 수 없습니다.\n발견된 시트 목록:\n${sheetNames.map(n=>'  • "'+n+'"').join('\n')}`);
+    }
+
+    stage = '데이터 분석';
+    STATE = parseWorkbook(wb);
+
+    // 진단: 콘솔에 파싱 결과 출력
+    console.log('파싱 결과:', {
+      currentMonth: STATE.currentMonth,
+      wd: STATE.wd, today: STATE.today,
+      workshops: STATE.workshops.map(w => ({ name: w.name, retailer: w.retailer, budget: w.budgetByMonth[STATE.currentMonth], actual: w.actualByMonth[STATE.currentMonth] })),
+      retailers: STATE.retailers.map(r => ({ name: r.name, budget: r.budgetByMonth[STATE.currentMonth], actual: r.actualByMonth[STATE.currentMonth] })),
+    });
+
+    if (STATE.workshops.length === 0) {
+      throw new Error('지점(Workshop) 데이터를 하나도 읽지 못했습니다. "0. Target" 탭의 B4~B25 셀을 확인하세요.');
+    }
+    if (STATE.retailers.length === 0) {
+      throw new Error('리테일러사(Retailer) 데이터를 하나도 읽지 못했습니다. "0. Target" 탭의 B30~B38 셀을 확인하세요.');
+    }
+
+    stage = '화면 렌더링';
+    render();
+  } catch (err) {
+    showDebugInfo(`단계: ${stage}\n\n${err.message}\n\n${err.stack || ''}`, true);
+    console.error(err);
+  }
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.target;
+    const mode = btn.dataset.mode;
+    document.querySelectorAll(`.filter-btn[data-target="${target}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (target === 'retailer') renderRetailerTable(mode);
+    else if (target === 'workshop') renderWorkshopTable(mode);
+  });
+});
+
+document.getElementById('entitySelect').addEventListener('change', () => {
+  if (STATE) renderProgressChart();
+});
+</script>
+</body>
+</html>

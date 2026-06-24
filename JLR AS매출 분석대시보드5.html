@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JLR After-Sales Retailer Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  :root{
+    --navy:#14233F;--navy2:#22375C;--blue:#2E6BB8;--blue2:#5B9BD5;--teal:#0E8F8B;--gold:#C9A227;
+    --green:#3FA66A;--red:#C0392B;--orange:#E8833A;--slate:#6B7A8D;--ink:#1B2A44;
+    --bg:#EEF1F6;--card:#FFFFFF;--line:#E3E8EF;--soft:#F4F7FB;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI','Malgun Gothic',Arial,sans-serif;}
+  body{background:var(--bg);color:var(--ink);font-size:13px;}
+  .header{background:linear-gradient(100deg,var(--navy),var(--navy2));color:#fff;padding:16px 30px;display:flex;align-items:center;justify-content:space-between;}
+  .header h1{font-size:20px;font-weight:700;letter-spacing:.2px;}
+  .header .sub{font-size:11px;opacity:.65;margin-top:3px;letter-spacing:.3px;}
+  .hr-right{display:flex;align-items:center;gap:10px;}
+  .badge{background:rgba(255,255,255,.12);padding:6px 13px;border-radius:8px;font-size:12px;font-weight:600;}
+  .badge.gold{background:var(--gold);color:var(--navy);font-weight:700;}
+
+  .ribbon{background:var(--card);margin:0;padding:11px 30px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);}
+  .ribbon .lab{font-size:11px;font-weight:700;color:var(--slate);}
+  .ibtn{color:#fff;padding:6px 13px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;}
+  select{border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--ink);background:#fff;cursor:pointer;}
+  select:focus{outline:none;border-color:var(--blue);}
+  .val-select{font-weight:700;border:2px solid var(--blue)!important;color:var(--blue);}
+  .status{font-size:11px;color:var(--slate);}
+  .sepv{width:1px;height:22px;background:var(--line);}
+  .mchip{font-size:11px;font-weight:700;padding:4px 9px;border-radius:14px;border:1px solid var(--line);cursor:pointer;background:#fff;color:var(--slate);}
+  .mchip.on{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .toggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .toggle button{border:none;background:#fff;color:var(--slate);font-size:11px;font-weight:700;padding:6px 12px;cursor:pointer;}
+  .toggle button.on{background:var(--navy);color:#fff;}
+
+  .tabbar{background:var(--card);padding:0 24px;display:flex;gap:2px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;flex-wrap:wrap;}
+  .tab{padding:13px 18px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--slate);border-bottom:3px solid transparent;}
+  .tab.active{color:var(--navy);border-bottom-color:var(--blue);}
+  .wrap{padding:18px 24px 40px;}
+  .tab-content{display:none;} .tab-content.active{display:block;animation:fade .25s;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;}}
+
+  .grid{display:grid;gap:16px;}
+  .g4{grid-template-columns:repeat(4,1fr);} .g5{grid-template-columns:repeat(5,1fr);}
+  .g3{grid-template-columns:repeat(3,1fr);} .g2{grid-template-columns:1fr 1fr;}
+  .g21{grid-template-columns:1.6fr 1fr;} .g12{grid-template-columns:1fr 1.6fr;}
+  .row{display:grid;gap:16px;margin-bottom:16px;}
+
+  .kpi{background:var(--card);border-radius:14px;padding:16px 18px;box-shadow:0 2px 14px rgba(20,35,63,.06);position:relative;overflow:hidden;}
+  .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--blue);}
+  .kpi .lab{font-size:11px;font-weight:700;color:var(--slate);letter-spacing:.3px;text-transform:uppercase;}
+  .kpi .val{font-size:27px;font-weight:800;color:var(--navy);margin-top:7px;line-height:1;}
+  .kpi .unit{font-size:13px;font-weight:600;color:var(--slate);margin-left:3px;}
+  .kpi .sub{font-size:11px;color:var(--slate);margin-top:7px;}
+  .kpi.b1::before{background:var(--blue);} .kpi.b2::before{background:var(--orange);}
+  .kpi.b3::before{background:var(--teal);} .kpi.b4::before{background:var(--green);} .kpi.b5::before{background:var(--gold);}
+  .delta{font-weight:800;font-size:12px;} .up{color:var(--green);} .dn{color:var(--red);}
+
+  .card{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 2px 14px rgba(20,35,63,.06);}
+  .card h3{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:3px;display:flex;align-items:center;gap:8px;justify-content:space-between;}
+  .card h3 .t{display:flex;align-items:center;gap:8px;}
+  .card h3 .t::before{content:'';width:9px;height:9px;border-radius:3px;background:var(--blue);}
+  .card .cap{font-size:11px;color:var(--slate);margin-bottom:13px;}
+  .cc{position:relative;}
+
+  table.dt{width:100%;border-collapse:collapse;font-size:12px;}
+  table.dt th{background:var(--soft);color:var(--navy);padding:9px 10px;text-align:right;font-weight:700;font-size:11px;white-space:nowrap;border-bottom:2px solid var(--line);position:sticky;top:0;}
+  table.dt th:first-child,table.dt td:first-child{text-align:left;}
+  table.dt th.c,table.dt td.c{text-align:center;}
+  table.dt td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;}
+  table.dt td:first-child{font-weight:600;color:var(--navy);}
+  table.dt tr:hover{background:var(--soft);}
+  table.dt tr.tot{background:var(--soft);font-weight:800;}
+  table.dt tr.tot td{border-top:2px solid var(--blue);}
+  table.dt tr.top1 td:first-child{color:var(--gold);} table.dt tr.bot1 td:first-child{color:var(--red);}
+  .tag{display:inline-block;padding:2px 9px;border-radius:11px;font-size:10px;font-weight:700;}
+  .tag.r{background:#E8F0FB;color:var(--blue);} .tag.sz{background:#FBF2DF;color:#9a7b12;}
+  .tag.acc{background:#FBEAEA;color:var(--red);} .tag.gold{background:#FFF4DC;color:#9a7b12;}
+  .scroll{overflow:auto;max-height:540px;}
+
+  .empty-state{display:none;text-align:center;padding:90px 20px;color:var(--slate);}
+  body.nodata .wrap{display:none;}
+  body.nodata .empty-state{display:block;}
+  .empty-state .ico{font-size:60px;margin-bottom:16px;}
+  .empty-state h2{font-size:18px;color:var(--navy);margin-bottom:8px;}
+
+  .drill-select{font-size:15px;font-weight:800;border:2px solid var(--blue)!important;color:var(--navy);padding:8px 14px;border-radius:9px;}
+  .stat-strip{display:flex;gap:0;background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 2px 14px rgba(20,35,63,.06);margin-bottom:16px;}
+  .stat{flex:1;padding:16px 18px;border-right:1px solid var(--line);}
+  .stat:last-child{border-right:none;}
+  .stat .l{font-size:11px;font-weight:700;color:var(--slate);text-transform:uppercase;}
+  .stat .v{font-size:23px;font-weight:800;color:var(--navy);margin-top:6px;}
+  .stat .d{font-size:11px;margin-top:5px;}
+  @media (max-width:1200px){.g4,.g5,.g3{grid-template-columns:repeat(2,1fr);}.g2,.g21,.g12{grid-template-columns:1fr;}.stat-strip{flex-wrap:wrap;}.stat{min-width:46%;}}
+  @media print{.ribbon .ibtn,.tabbar{display:none;}body{background:#fff;}.tab-content{display:block!important;}}
+</style>
+</head>
+<body class="nodata">
+<div class="header">
+  <div><h1>JLR After-Sales · Retailer Performance</h1><div class="sub">지점 상세 분석 · 지점 비교 · 월별 트렌드 · 리테일러 / 마켓 기준</div></div>
+  <div class="hr-right"><span class="badge gold">단위: 백만원</span><span class="badge" id="periodBadge">데이터 없음</span></div>
+</div>
+
+<div class="ribbon">
+  <span class="lab">📂 데이터</span>
+  <button class="ibtn" style="background:var(--blue);" onclick="document.getElementById('fileXlsx').click()">엑셀 업로드</button>
+  <input type="file" id="fileXlsx" accept=".xlsx,.xls" multiple onchange="onXlsx(event)" style="display:none">
+  <button class="ibtn" style="background:var(--teal);" onclick="document.getElementById('fileJson').click()">스냅샷 열기</button>
+  <input type="file" id="fileJson" accept=".json" style="display:none" onchange="onJson(event)">
+  <button class="ibtn" style="background:var(--slate);" onclick="exportJson()">스냅샷 저장</button>
+  <button class="ibtn" style="background:#9aa7b5;" onclick="clearAll()">비우기</button>
+  <span class="sepv"></span>
+  <span class="lab">값</span><select class="val-select" id="metric" onchange="render()">
+    <option value="합계">매출</option><option value="부품판가">부품판가</option><option value="공임판가">공임판가</option>
+    <option value="마진">마진액</option><option value="VIN대수">입고 VIN</option><option value="RO건수">RO</option></select>
+  <span class="sepv"></span>
+  <span class="lab">📅 기간</span><span id="mchips"></span>
+  <span class="sepv"></span>
+  <span class="lab">리테일러</span><select id="fRet" onchange="onRet()"></select>
+  <span class="lab">지점</span><select id="fWs" onchange="render()"></select>
+  <span class="lab">단위</span><select id="fGran" onchange="render()"><option value="월">월</option><option value="분기">회계분기</option></select>
+  <button class="ibtn" style="background:#9aa7b5;margin-left:auto;" onclick="window.print()">🖨️ PDF</button>
+  <span class="status" id="ioStatus"></span>
+</div>
+
+<div class="tabbar">
+  <button class="tab active" onclick="tab('t-ov',this)">📊 마켓 종합</button>
+  <button class="tab" onclick="tab('t-cmp',this)">📍 지점 비교</button>
+  <button class="tab" onclick="tab('t-drill',this)">🔍 지점 상세</button>
+  <button class="tab" onclick="tab('t-veh',this)">🚗 입고 분석</button>
+  <button class="tab" onclick="tab('t-job',this)">🏷️ JOB CODE</button>
+</div>
+
+<div class="empty-state"><div class="ico">📈</div><h2>데이터를 올려주세요</h2><p>상단 <b>엑셀 업로드</b>(여러 달 동시 가능) 또는 <b>스냅샷 열기</b>로 시작합니다.<br>'판매'로 시작하는 시트를 자동 인식합니다 · 단위 백만원 · 회계연도 4월 시작</p></div>
+
+<div class="wrap">
+  <!-- OVERVIEW -->
+  <div id="t-ov" class="tab-content active">
+    <div class="grid g5 row" id="ovKpi"></div>
+    <div class="row g21">
+      <div class="card"><h3><span class="t">월별 매출 · 부품원가 추이</span></h3><div class="cap">막대=매출/부품원가(백만원, 값표시) · 선=마진율</div><div class="cc" style="height:300px;"><canvas id="ovTrend"></canvas></div></div>
+      <div class="card"><h3><span class="t">리테일러별 매출 비중</span></h3><div class="cap">마켓 점유</div><div class="cc" style="height:300px;"><canvas id="ovRetPie"></canvas></div></div>
+    </div>
+    <div class="row g3">
+      <div class="card"><h3><span class="t">JOB CODE 매출 비중</span></h3><div class="cap">청구 성격</div><div class="cc" style="height:260px;"><canvas id="ovJobPie"></canvas></div></div>
+      <div class="card"><h3><span class="t">월별 입고 VIN (합계 표시)</span></h3><div class="cap">사고(INS)·제외 누적 + 총계 라벨</div><div class="cc" style="height:260px;"><canvas id="ovVin"></canvas></div></div>
+      <div class="card"><h3><span class="t">월별 RO 건수</span></h3><div class="cap">사고수리 포함 RO는 붉은색으로 별도 표시</div><div class="cc" style="height:260px;"><canvas id="ovRo"></canvas></div></div>
+    </div>
+    <div class="card"><h3><span class="t">리테일러별 월 매출 요약</span>
+      <span class="toggle" id="ovIncToggle"><button id="ovIncOn" class="on" onclick="setOvInc(true)">사고수리 포함</button><button id="ovIncOff" onclick="setOvInc(false)">사고수리 제외</button></span></h3>
+      <div class="scroll"><table class="dt" id="ovTable"></table></div></div>
+  </div>
+
+  <!-- COMPARE -->
+  <div id="t-cmp" class="tab-content">
+    <div class="card" style="margin-bottom:16px;"><h3><span class="t">종합 성과 랭킹</span></h3><div class="cap">베이당 매출 순위 + 마진율 순위를 합산한 종합점수 · 🥇상위/🚩하위 자동 표시</div><div class="scroll"><table class="dt" id="cmpScoreTable"></table></div></div>
+    <div class="card" style="margin-bottom:16px;"><div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+      <span class="lab" style="font-size:12px;font-weight:700;color:var(--slate);">규모 그룹</span>
+      <select id="cmpSize" onchange="render()"><option value="ALL">전체</option><option value="대형">대형(≥10베이)</option><option value="중형">중형(5–9베이)</option><option value="소형">소형(≤4베이)</option></select>
+      <span class="cap" style="margin:0;">단순 매출 비교는 규모가 큰 지점이 항상 1위가 되어 의미가 없습니다 → <b>베이당 매출</b>로 규모를 보정해 "누가 잘하는지" 비교합니다.</span>
+    </div></div>
+    <div class="row g2">
+      <div class="card"><h3><span class="t">베이당 매출 (규모 보정 핵심 지표)</span></h3><div class="cap">매출 ÷ 워크베이 수 — 1베이가 만들어내는 매출</div><div class="cc" style="height:400px;"><canvas id="cmpBay"></canvas></div></div>
+      <div class="card"><h3><span class="t">지점별 마진율</span></h3><div class="cap">(부품판가−원가+공임)÷매출</div><div class="cc" style="height:400px;"><canvas id="cmpMr"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px;"><h3><span class="t">지점별 JOB CODE 구성비 (%)</span></h3><div class="cap">매출 규모가 아닌 "일의 성격" 비교 — 베이당 매출 순으로 정렬</div><div class="cc" style="height:380px;"><canvas id="cmpStack"></canvas></div></div>
+    <div class="card"><h3><span class="t">지점별 베이당 매출 트렌드</span></h3><div class="cap">규모를 보정한 월별 변화 (상위 8개 지점)</div><div class="cc" style="height:340px;"><canvas id="cmpTrend"></canvas></div></div>
+    <div class="card" style="margin-top:16px;"><h3><span class="t">지점 비교 표 (리테일러 → 워크샵)</span></h3><div class="scroll"><table class="dt" id="cmpTable"></table></div></div>
+  </div>
+
+  <!-- DRILL -->
+  <div id="t-drill" class="tab-content">
+    <div class="card" style="margin-bottom:16px;"><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+      <span class="lab" style="font-size:12px;font-weight:700;color:var(--slate);">🔍 지점 선택</span>
+      <select class="drill-select" id="drillWs" onchange="renderDrill()"></select>
+      <span class="toggle"><button id="drIncOn" class="on" onclick="setDrInc(true)">사고수리 포함</button><button id="drIncOff" onclick="setDrInc(false)">사고수리 제외</button></span>
+      <span class="cap" style="margin:0;" id="drillMeta"></span>
+    </div></div>
+    <div class="stat-strip" id="drillStats"></div>
+    <div class="row g2">
+      <div class="card"><h3><span class="t">매출 추이 — 부품·공임 분해 + 마진</span></h3><div class="cap">막대(나란히)=부품금액 / 공임금액(백만원, 값표시) · 선(녹색)=마진액(값표시)</div><div class="cc" style="height:300px;"><canvas id="drTrend"></canvas></div></div>
+      <div class="card"><h3><span class="t">월별 JOB CODE 비율 변화</span></h3><div class="cap">청구 믹스가 어떻게 변하는가(%)</div><div class="cc" style="height:300px;"><canvas id="drJobMix"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px;"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <h3 style="margin:0;"><span class="t">기준월 Segment별 매출 → JOB CODE 분해</span></h3>
+      <select id="drSegMonth" onchange="renderDrillSegJob()" style="margin-left:8px;"></select>
+      <span class="cap" id="drSegCap" style="margin:0;"></span>
+    </div><div class="cc" style="height:320px;"><canvas id="drSegJob"></canvas></div></div>
+    <div class="row g3">
+      <div class="card"><h3><span class="t">마진율 추이</span></h3><div class="cc" style="height:240px;"><canvas id="drMr"></canvas></div></div>
+      <div class="card"><h3><span class="t">입고 VIN 추이</span></h3><div class="cap">사고·제외</div><div class="cc" style="height:240px;"><canvas id="drVin"></canvas></div></div>
+      <div class="card"><h3><span class="t">입고 Segment 비율</span></h3><div class="cc" style="height:240px;"><canvas id="drSeg"></canvas></div></div>
+    </div>
+    <div class="row g2">
+      <div class="card"><h3><span class="t">입고 모델 비율 (상위)</span></h3><div class="cc" style="height:280px;"><canvas id="drModel"></canvas></div></div>
+      <div class="card"><h3><span class="t">월별 상세</span></h3><div class="scroll" style="max-height:280px;"><table class="dt" id="drTable"></table></div></div>
+    </div>
+  </div>
+
+  <!-- VEHICLE -->
+  <div id="t-veh" class="tab-content">
+    <div class="card" style="margin-bottom:16px;"><h3><span class="t">사고차 / 일반차 입고 트렌드</span></h3><div class="cap">기준 선택 — 월별 전체 / 지점별 / 리테일러별 비교</div>
+      <div style="display:flex;gap:10px;margin:8px 0 12px;flex-wrap:wrap;">
+        <select id="vehDim" onchange="render()"><option value="월">월별(마켓 전체)</option><option value="워크샵">지점별</option><option value="리테일러">리테일러별</option></select>
+      </div>
+      <div class="cc" style="height:340px;"><canvas id="vehTrend"></canvas></div></div>
+    <div class="card" style="margin-bottom:16px;"><h3><span class="t">입고 Segment 비율 변화</span></h3><div class="cap">기준 선택 — 마켓 전체 / 월별 / 지점별 / 리테일러별</div>
+      <div style="display:flex;gap:10px;margin:8px 0 12px;flex-wrap:wrap;">
+        <select id="vehSegDim" onchange="render()"><option value="마켓">마켓 전체</option><option value="월">월별</option><option value="워크샵">지점별</option><option value="리테일러">리테일러별</option></select>
+      </div>
+      <div class="cc" style="height:340px;"><canvas id="vehSegDimChart"></canvas></div></div>
+    <div class="row g3">
+      <div class="card"><h3><span class="t">입고 모델 비율 (상위 10)</span></h3><div class="cc" style="height:260px;"><canvas id="vehModel"></canvas></div></div>
+      <div class="card"><h3><span class="t">지점별 입고 VIN (사고/제외)</span></h3><div class="cc" style="height:260px;"><canvas id="vehSplit"></canvas></div></div>
+      <div class="card"><h3><span class="t">입고 Segment 비율(전체)</span></h3><div class="cc" style="height:260px;"><canvas id="vehSeg"></canvas></div></div>
+    </div>
+    <div class="row g2">
+      <div class="card"><h3><span class="t">Segment별 JOB CODE 비율</span></h3><div class="cap">차령대별 작업 성격</div><div class="cc" style="height:300px;"><canvas id="vehSegJob"></canvas></div></div>
+      <div class="card"><h3><span class="t">모델별 JOB CODE 비율 (상위 10)</span></h3><div class="cap">모델별 작업 성격</div><div class="cc" style="height:300px;"><canvas id="vehModelJob"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- JOBCODE -->
+  <div id="t-job" class="tab-content">
+    <div class="row g21">
+      <div class="card"><h3><span class="t">월별 JOB CODE 비율 (100%)</span></h3><div class="cap">믹스 변화 추이</div><div class="cc" style="height:330px;"><canvas id="jobMix"></canvas></div></div>
+      <div class="card"><h3><span class="t">JOB CODE 매출 비중</span></h3><div class="cc" style="height:330px;"><canvas id="jobPie"></canvas></div></div>
+    </div>
+    <div class="card"><h3><span class="t">JOB CODE 상세 실적</span></h3><div class="scroll"><table class="dt" id="jobTable"></table></div></div>
+  </div>
+</div>
+
+<script>
+const BAY={'CH SS':22,'CH DC':4,'CH CA':5,'CH SW':8,'KCC BD':9,'KCC SC':8,'KCC SN':14,'KCC WJ':4,'KCC IS':12,'KCC GD':8,'KCC JJ':3,'AJ SS':13,'AJ ICND':11,'AJ HN':5,'WB GJ':8,'WB JJ':6,'JL':8,'BA DDM':null,'BA PC':10,'EN':8,'EN SDG':7,'HY':9,'HS BC':8,'HS US':3};
+const PAL=['#2E6BB8','#3FA66A','#E8833A','#C9A227','#7E57C2','#C0392B','#5B9BD5','#0E8F8B','#8D6E63','#D81B60','#26A69A','#5C6BC0','#9CCC65','#EC407A','#42A5F5','#FF7043'];
+const RETCOL={'KCC':'#2E6BB8','CH':'#3FA66A','AJ':'#E8833A','WB':'#7E57C2','EN':'#0E8F8B','HY':'#C0392B','HS':'#C9A227','JL':'#5B9BD5','BA':'#8D6E63'};
+let ROWS=[],DIMS={},BR2RET={},MONTHS=[],QS=[],CHARTS={},INS_RO=new Set();
+let SELM=new Set();
+let OV_INC=true, DR_INC=true;
+
+Chart.register(ChartDataLabels);
+const centerText={id:'ct',afterDraw(c){const o=c.options.plugins.ct;if(!o||!o.text)return;const{ctx,chartArea:{left,right,top,bottom}}=c;const x=(left+right)/2,y=(top+bottom)/2;ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#14233F';ctx.font='800 17px Segoe UI';ctx.fillText(o.text,x,y-7);if(o.sub){ctx.fillStyle='#8a98a8';ctx.font='600 10px Segoe UI';ctx.fillText(o.sub,x,y+12);}ctx.restore();}};
+Chart.register(centerText);
+
+function fmt(n,d=0){if(n==null||isNaN(n))return '-';return n.toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function MM(n){return (n==null||isNaN(n))?'-':fmt(n/1e6,1);}
+function pct(n){return (n==null||isNaN(n))?'-':fmt(n*100,1)+'%';}
+const MET={'합계':{k:'won',t:'매출'},'부품판가':{k:'won',t:'부품판가'},'공임판가':{k:'won',t:'공임판가'},'마진':{k:'won',t:'마진액'},'VIN대수':{k:'cnt',u:'대',t:'입고 VIN'},'RO건수':{k:'cnt',u:'건',t:'RO'}};
+function metric(){return v('metric');}
+function mlabel(){return MET[metric()].t;}
+function ret(w){return BR2RET[w]||(w.split(' ')[0]);}
+function retColor(w){return RETCOL[ret(w)]||'#2E6BB8';}
+function szOf(w){const b=BAY[w];if(b==null)return '미상';return b>=10?'대형':b>=5?'중형':'소형';}
+
+function blank(){return {합계:0,부품판가:0,공임판가:0,부품원가:0,청구시간:0,작업시간:0,line:0,vin:new Set(),accVin:new Set(),ro:new Set(),accRo:new Set()};}
+function ac(o,r){o.합계+=r.합계;o.부품판가+=r.부품판가;o.공임판가+=r.공임판가;o.부품원가+=r.부품원가;o.청구시간+=r.청구시간;o.작업시간+=r.작업시간;o.line++;if(r.vin){o.vin.add(r.vin);if(r.잡코드==='INS')o.accVin.add(r.vin);}if(r.ro){o.ro.add(r.ro);if(INS_RO.has(r.ro))o.accRo.add(r.ro);}}
+function agg(rows){const o=blank();rows.forEach(r=>ac(o,r));return o;}
+function marginRate(o){return o.합계?((o.부품판가-o.부품원가)+o.공임판가)/o.합계:0;}
+function marginAmt(o){return (o.부품판가-o.부품원가)+o.공임판가;}
+function mval(o,m){m=m||metric();switch(m){case '합계':return o.합계;case '부품판가':return o.부품판가;case '공임판가':return o.공임판가;case '마진':return marginAmt(o);case 'VIN대수':return o.vin.size;case 'RO건수':return o.ro.size;}}
+function mfmt(x,m){m=m||metric();const k=MET[m].k;return k==='won'?MM(x):fmt(x)+(MET[m].u||'');}
+function mtip(x,m){const s=mfmt(x,m);return MET[m||metric()].k==='won'?s+' 백만원':s;}
+function excludeIns(rows,inc){return inc?rows:rows.filter(r=>r.잡코드!=='INS');}
+
+function fq(ym){const p=ym.split('-'),y=+p[0],mo=+p[1];let q,fy;if(mo>=4){q=Math.floor((mo-4)/3)+1;fy=y+1;}else{q=4;fy=y;}return String(fy).slice(2)+"'"+q+'Q';}
+function qn(l){const m=l.match(/(\d+)'(\d)Q/);return +m[1]*10+ +m[2];}
+
+const CM={'Workshop':'워크샵','리테일러':'리테일러','브랜드':'브랜드','Segment':'세그먼트','판매유형':'판매유형','JOB CODE':'잡코드','담당SA':'SA','모델':'모델','총금액':'합계','부품판매금액':'부품판가','공임판매가합계':'공임판가','부품원가':'부품원가','청구시간':'청구시간','작업시간':'작업시간','차대번호':'vin','RO번호':'ro','인보이스완료일':'inv','차량등록일':'reg'};
+function toNum(x){const n=parseFloat(String(x).replace(/,/g,''));return isNaN(n)?0:n;}
+function exDate(x){if(x instanceof Date)return x;if(typeof x==='number'){const o=new Date(Date.UTC(1899,11,30));o.setUTCDate(o.getUTCDate()+Math.floor(x));return o;}const d=new Date(x);return isNaN(d)?null:d;}
+function S(x){const s=String(x==null?'':x).trim();return s||'미분류';}
+function st(t,c){const e=document.getElementById('ioStatus');e.textContent=t;e.style.color=c||'var(--slate)';}
+
+function onXlsx(e){const files=[...e.target.files];if(!files.length)return;let done=0,ms=new Set(),all=[];
+  files.forEach(file=>{const rd=new FileReader();rd.onload=ev=>{try{
+    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true});
+    const sn=wb.SheetNames.find(s=>s.replace(/\s/g,'').startsWith('판매'))||wb.SheetNames[0];
+    const raw=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''});
+    let hr=0,mx=0;for(let i=0;i<Math.min(6,raw.length);i++){const c=raw[i].filter(x=>String(x).trim()!=='').length;if(c>mx){mx=c;hr=i;}}
+    const H=raw[hr].map(h=>String(h).trim());
+    for(let i=hr+1;i<raw.length;i++){const row=raw[i];if(!row||!row.some(c=>String(c).trim()!==''))continue;const o={};H.forEach((h,j)=>{const k=CM[h];if(k)o[k]=row[j];});if(o.inv===undefined)continue;const inv=exDate(o.inv),reg=exDate(o.reg);if(!inv)continue;const ym=inv.getFullYear()+'-'+String(inv.getMonth()+1).padStart(2,'0');let age=null;if(reg){age=Math.floor((inv-reg)/864e5);if(age<0)age=null;}
+      all.push({워크샵:S(o.워크샵),리테일러:S(o.리테일러),브랜드:S(o.브랜드),세그먼트:S(o.세그먼트),판매유형:S(o.판매유형),잡코드:S(o.잡코드),SA:S(o.SA),모델:S(o.모델),월:ym,분기:fq(ym),합계:toNum(o.합계),부품판가:toNum(o.부품판가),공임판가:toNum(o.공임판가),부품원가:toNum(o.부품원가),청구시간:toNum(o.청구시간),작업시간:toNum(o.작업시간),차령:age,vin:String(o.vin||'').trim(),ro:String(o.ro||'').trim()});ms.add(ym);}
+    }catch(err){st('❌ '+file.name+': '+err.message,'var(--red)');}
+    if(++done===files.length){const b2r={};all.forEach(r=>{if(r.워크샵!=='미분류')b2r[r.워크샵]=r.리테일러;});mergeData(all,b2r);st('✓ '+files.length+'파일 · '+[...ms].sort().join(', ')+' (총 '+fmt(ROWS.length)+'행)','var(--green)');}
+  };rd.readAsArrayBuffer(file);});e.target.value='';}
+function mergeData(rows,b2r){const nm=new Set(rows.map(r=>r.월));ROWS=ROWS.filter(r=>!nm.has(r.월)).concat(rows);BR2RET={...BR2RET,...b2r};boot();}
+function exportJson(){if(!ROWS.length)return;const b=new Blob([JSON.stringify({rows:ROWS,br2ret:BR2RET})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='JLR_AS_스냅샷_'+MONTHS.join('_')+'.json';a.click();}
+function onJson(e){const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=ev=>{try{const d=JSON.parse(ev.target.result);ROWS=d.rows.map(r=>({...r,분기:r.분기||fq(r.월)}));BR2RET=d.br2ret||{};boot();st('✓ 스냅샷 ('+fmt(ROWS.length)+'행)','var(--green)');}catch(err){st('❌ '+err.message,'var(--red)');}};rd.readAsText(f);e.target.value='';}
+function clearAll(){ROWS=[];BR2RET={};boot();st('비움','var(--slate)');}
+
+function boot(){
+  document.body.classList.toggle('nodata',ROWS.length===0);
+  INS_RO=new Set(ROWS.filter(r=>r.잡코드==='INS').map(r=>r.ro));
+  const f=['워크샵','리테일러','브랜드','세그먼트','판매유형','잡코드','SA','모델','월'];DIMS={};f.forEach(k=>DIMS[k]=[...new Set(ROWS.map(r=>r[k]))].sort());
+  MONTHS=DIMS['월']||[];QS=[...new Set(ROWS.map(r=>r.분기))].sort((a,b)=>qn(a)-qn(b));
+  SELM=new Set(MONTHS);
+  fillSel('fRet','리테일러',true);onRet();fillSel('drillWs','워크샵',false);
+  fillDrSegMonth();
+  chips();
+  document.getElementById('periodBadge').textContent=MONTHS.length?MONTHS[0]+' ~ '+MONTHS[MONTHS.length-1]:'데이터 없음';
+  render();
+}
+function v(id){return document.getElementById(id).value;}
+function fillSel(id,dim,all){const el=document.getElementById(id);if(!el)return;el.innerHTML='';if(all){const o=document.createElement('option');o.value='ALL';o.textContent='전체';el.appendChild(o);}(DIMS[dim]||[]).forEach(x=>{const op=document.createElement('option');op.value=x;op.textContent=x;el.appendChild(op);});}
+function onRet(){const ret=v('fRet');const sub=(DIMS['워크샵']||[]).filter(w=>ret==='ALL'||BR2RET[w]===ret);const el=document.getElementById('fWs');const keep=el.value;el.innerHTML='';const o=document.createElement('option');o.value='ALL';o.textContent='전체';el.appendChild(o);sub.forEach(x=>{const op=document.createElement('option');op.value=x;op.textContent=x;el.appendChild(op);});el.value=sub.includes(keep)?keep:'ALL';render();}
+function fillDrSegMonth(){const el=document.getElementById('drSegMonth');el.innerHTML='';MONTHS.forEach(mo=>{const o=document.createElement('option');o.value=mo;o.textContent=mo;el.appendChild(o);});if(MONTHS.length)el.value=MONTHS[MONTHS.length-1];}
+function chips(){const c=document.getElementById('mchips');c.innerHTML='';MONTHS.forEach(mo=>{const s=document.createElement('span');s.className='mchip'+(SELM.has(mo)?' on':'');s.textContent=mo.slice(2);s.title=mo;s.onclick=()=>{if(SELM.has(mo))SELM.delete(mo);else SELM.add(mo);if(!SELM.size)SELM.add(mo);chips();render();};c.appendChild(s);});}
+function tab(id,b){document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById(id).classList.add('active');b.classList.add('active');render();}
+function setOvInc(b){OV_INC=b;document.getElementById('ovIncOn').classList.toggle('on',b);document.getElementById('ovIncOff').classList.toggle('on',!b);renderOVTable();}
+function setDrInc(b){DR_INC=b;document.getElementById('drIncOn').classList.toggle('on',b);document.getElementById('drIncOff').classList.toggle('on',!b);renderDrill();}
+
+function base(){const r=v('fRet'),w=v('fWs');return ROWS.filter(x=>SELM.has(x.월)&&(r==='ALL'||x.리테일러===r)&&(w==='ALL'||x.워크샵===w));}
+function P(){return v('fGran')==='분기'?{k:'분기',list:QS.filter(q=>base().some(r=>r.분기===q))}:{k:'월',list:MONTHS.filter(m=>SELM.has(m))};}
+function gAgg(rows,dim){const m={};rows.forEach(r=>{const k=r[dim];if(!m[k])m[k]=blank();ac(m[k],r);});return m;}
+function azKeys(o){return Object.keys(o).sort();}
+function mk(id,cfg){if(CHARTS[id])CHARTS[id].destroy();const el=document.getElementById(id);if(el)CHARTS[id]=new Chart(el,cfg);}
+const bo={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},color:'#1B2A44',boxWidth:11}},datalabels:{display:false}}};
+function vt(){const k=MET[metric()].k;return {ticks:{callback:x=>k==='won'?MM(x):fmt(x),font:{size:10}},grid:{color:'#EEF1F6'}};}
+function pieOpts(centerSub){return {...bo,cutout:'62%',plugins:{legend:{position:'right',labels:{font:{size:10},color:'#1B2A44',boxWidth:11,padding:7}},ct:{text:'',sub:centerSub},datalabels:{color:'#fff',font:{weight:700,size:10},formatter:(v,ctx)=>{const tot=ctx.dataset.data.reduce((a,b)=>a+b,0);const p=tot?v/tot*100:0;return p>=5?fmt(p,0)+'%':'';}},tooltip:{callbacks:{label:c=>c.label+': '+mtip(c.raw,'합계')+' ('+fmt(c.parsed/c.dataset.data.reduce((a,b)=>a+b,0)*100,1)+'%)'}}}};}
+// datalabel helpers for bar charts
+const dlWon={display:true,color:'#14233F',font:{weight:700,size:10},anchor:'end',align:'right',formatter:v=>v?MM(v):''};
+const dlWonTop={display:true,color:'#14233F',font:{weight:700,size:10},anchor:'end',align:'top',formatter:v=>v?MM(v):''};
+const dlPctTop={display:true,color:'#14233F',font:{weight:700,size:10},anchor:'end',align:'top',formatter:v=>v?fmt(v,1)+'%':''};
+const dlCntTop={display:true,color:'#14233F',font:{weight:700,size:10},anchor:'end',align:'top',formatter:v=>v?fmt(v):''};
+const dlOff={display:false};
+
+function render(){if(!ROWS.length)return;renderOV();renderCMP();renderDrill();renderVEH();renderJOB();}
+
+// ===== OVERVIEW =====
+function renderOV(){
+  const rows=base(),t=agg(rows),pp=P();
+  const mm=gAgg(rows,'월'),ml=MONTHS.filter(x=>SELM.has(x));
+  const last=ml[ml.length-1],prev=ml[ml.length-2];
+  const mom=(a,b,f)=>{if(!a||!b)return '';const x=f(mm[a]||blank()),y=f(mm[b]||blank());if(!y)return '';const d=(x-y)/y;return '<span class="delta '+(d>=0?'up':'dn')+'">'+(d>=0?'▲':'▼')+fmt(Math.abs(d)*100,1)+'%</span>';};
+  const totBay=DIMS['워크샵'].reduce((s,w)=>s+(BAY[w]||0),0);
+  const k=[
+    {b:'b1',l:'매출',v:MM(t.합계),u:'백만',s:'마진 '+MM(marginAmt(t))+' '+mom(last,prev,o=>o.합계)},
+    {b:'b4',l:'마진율',v:pct(marginRate(t)),u:'',s:'(부품판가−원가+공임)÷매출'},
+    {b:'b3',l:'입고 VIN',v:fmt(t.vin.size),u:'대',s:'사고 '+fmt(t.accVin.size)+' / 제외 '+fmt(t.vin.size-t.accVin.size)},
+    {b:'b2',l:'RO',v:fmt(t.ro.size),u:'건',s:'사고포함 RO '+fmt(t.accRo.size)+' '+mom(last,prev,o=>o.ro.size)},
+    {b:'b5',l:'베이당 매출',v:MM(totBay?t.합계/totBay:0),u:'백만',s:'총 '+totBay+' 베이 · '+DIMS['워크샵'].length+'개 지점'}];
+  document.getElementById('ovKpi').innerHTML=k.map(x=>`<div class="kpi ${x.b}"><div class="lab">${x.l}</div><div class="val">${x.v}<span class="unit">${x.u}</span></div><div class="sub">${x.s}</div></div>`).join('');
+  const pm=gAgg(rows,pp.k);
+  mk('ovTrend',{data:{labels:pp.list,datasets:[
+    {type:'bar',label:'매출',data:pp.list.map(p=>pm[p]?pm[p].합계:0),backgroundColor:'#2E6BB8',yAxisID:'y',borderRadius:4,datalabels:dlWonTop},
+    {type:'bar',label:'부품원가',data:pp.list.map(p=>pm[p]?pm[p].부품원가:0),backgroundColor:'#E8833A',yAxisID:'y',borderRadius:4,datalabels:dlOff},
+    {type:'line',label:'마진율',data:pp.list.map(p=>pm[p]?marginRate(pm[p])*100:0),borderColor:'#3FA66A',backgroundColor:'#3FA66A',yAxisID:'y1',tension:.3,borderWidth:3,pointRadius:3,datalabels:dlPctTop}]},
+    options:{...bo,plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.dataset.yAxisID==='y1'?fmt(c.raw,1)+'%':MM(c.raw)+' 백만원')}}},scales:{y:vt(),y1:{position:'right',min:0,max:60,ticks:{callback:x=>x+'%',font:{size:10}},grid:{drawOnChartArea:false}}}}});
+  const rm=gAgg(rows,'리테일러');const rk=azKeys(rm).sort((a,b)=>rm[b].합계-rm[a].합계);
+  mk('ovRetPie',{type:'doughnut',data:{labels:rk,datasets:[{data:rk.map(x=>rm[x].합계),backgroundColor:rk.map(x=>RETCOL[x]||'#999'),borderWidth:2,borderColor:'#fff'}]},options:(()=>{const o=pieOpts('총 '+MM(t.합계));o.plugins.ct.text=MM(t.합계)+'백만';return o;})()});
+  const jm=gAgg(rows,'잡코드');const jk=azKeys(jm).sort((a,b)=>jm[b].합계-jm[a].합계);
+  mk('ovJobPie',{type:'doughnut',data:{labels:jk,datasets:[{data:jk.map(x=>jm[x].합계),backgroundColor:jk.map((_,i)=>PAL[i%PAL.length]),borderWidth:2,borderColor:'#fff'}]},options:(()=>{const o=pieOpts('JOB');o.plugins.ct.text='JOB';o.plugins.ct.sub='CODE';return o;})()});
+  // vin with total overlay
+  mk('ovVin',{data:{labels:ml,datasets:[
+    {type:'bar',label:'사고제외',data:ml.map(x=>{const o=mm[x]||blank();return o.vin.size-o.accVin.size;}),backgroundColor:'#2E6BB8',borderRadius:3,stack:'v',datalabels:dlOff},
+    {type:'bar',label:'사고(INS)',data:ml.map(x=>(mm[x]||blank()).accVin.size),backgroundColor:'#C0392B',borderRadius:3,stack:'v',datalabels:dlOff},
+    {type:'line',label:'합계',data:ml.map(x=>(mm[x]||blank()).vin.size),borderWidth:0,pointRadius:0,backgroundColor:'rgba(0,0,0,0)',borderColor:'rgba(0,0,0,0)',datalabels:dlCntTop}]},
+    options:{...bo,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{font:{size:10}},grid:{color:'#EEF1F6'}}}}});
+  // RO: normal vs accident-included
+  mk('ovRo',{data:{labels:ml,datasets:[
+    {type:'bar',label:'일반 RO',data:ml.map(x=>{const o=mm[x]||blank();return o.ro.size-o.accRo.size;}),backgroundColor:'#0E8F8B',borderRadius:3,stack:'r',datalabels:dlOff},
+    {type:'bar',label:'사고포함 RO',data:ml.map(x=>(mm[x]||blank()).accRo.size),backgroundColor:'#C0392B',borderRadius:3,stack:'r',datalabels:dlOff},
+    {type:'line',label:'합계',data:ml.map(x=>(mm[x]||blank()).ro.size),borderWidth:0,pointRadius:0,backgroundColor:'rgba(0,0,0,0)',borderColor:'rgba(0,0,0,0)',datalabels:dlCntTop}]},
+    options:{...bo,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{font:{size:10}},grid:{color:'#EEF1F6'}}}}});
+  renderOVTable();
+}
+function renderOVTable(){
+  const rowsAll=base();const rows=excludeIns(rowsAll,OV_INC);
+  const ml=MONTHS.filter(x=>SELM.has(x));const rm=gAgg(rows,'리테일러');const rk=azKeys(rm).sort((a,b)=>rm[b].합계-rm[a].합계);
+  const mm=gAgg(rows,'월');const t=agg(rows);
+  let h='<thead><tr><th>리테일러</th>'+ml.map(x=>'<th>'+x.slice(2)+'</th>').join('')+'<th>합계</th><th>마진율</th></tr></thead><tbody>';
+  rk.forEach(r=>{const cells=ml.map(x=>{const o=blank();rows.filter(z=>z.리테일러===r&&z.월===x).forEach(z=>ac(o,z));return '<td>'+MM(o.합계)+'</td>';}).join('');h+='<tr><td><span class="tag r">'+r+'</span></td>'+cells+'<td><b>'+MM(rm[r].합계)+'</b></td><td>'+pct(marginRate(rm[r]))+'</td></tr>';});
+  const totCells=ml.map(x=>'<td>'+MM((mm[x]||blank()).합계)+'</td>').join('');
+  h+='<tr class="tot"><td>합계'+(OV_INC?'':' <span class="tag acc">사고수리 제외</span>')+'</td>'+totCells+'<td>'+MM(t.합계)+'</td><td>'+pct(marginRate(t))+'</td></tr></tbody>';
+  document.getElementById('ovTable').innerHTML=h;
+}
+
+// ===== COMPARE =====
+function renderCMP(){
+  const rows=base(),pp=P();const szF=v('cmpSize');
+  let wk=[...new Set(rows.map(r=>r.워크샵))].filter(w=>szF==='ALL'||szOf(w)===szF);
+  const wm=gAgg(rows,'워크샵');
+  // sort by bay-adjusted revenue desc
+  const bayVal=w=>BAY[w]?wm[w].합계/BAY[w]:0;
+  wk=wk.sort((a,b)=>bayVal(b)-bayVal(a));
+  mk('cmpBay',{type:'bar',data:{labels:wk,datasets:[{data:wk.map(bayVal),backgroundColor:wk.map(retColor),datalabels:dlWon}]},options:{...bo,indexAxis:'y',plugins:{legend:{display:false},datalabels:dlWon,tooltip:{callbacks:{label:c=>MM(c.raw)+' 백만/베이 ('+(BAY[wk[c.dataIndex]]||'?')+'베이)'}}},scales:{x:{ticks:{callback:x=>MM(x),font:{size:10}},grid:{color:'#EEF1F6'}},y:{ticks:{font:{size:10}},grid:{display:false}}}}});
+  mk('cmpMr',{type:'bar',data:{labels:wk,datasets:[{data:wk.map(k=>marginRate(wm[k])*100),backgroundColor:wk.map(retColor),datalabels:dlPctTop}]},options:{...bo,indexAxis:'y',plugins:{legend:{display:false},datalabels:{...dlPctTop,anchor:'end',align:'right'},tooltip:{callbacks:{label:c=>fmt(c.raw,1)+'%'}}},scales:{x:{ticks:{callback:x=>x+'%',font:{size:10}},grid:{color:'#EEF1F6'}},y:{ticks:{font:{size:10}},grid:{display:false}}}}});
+  // job ratio 100% stacked, sorted by bay value already
+  const jobs=azKeys(gAgg(rows,'잡코드'));const cell={};rows.forEach(r=>{if(!wk.includes(r.워크샵))return;cell[r.워크샵+'|'+r.잡코드]=(cell[r.워크샵+'|'+r.잡코드]||0)+r.합계;});
+  const tot={};wk.forEach(w=>tot[w]=jobs.reduce((s,j)=>s+(cell[w+'|'+j]||0),0));
+  mk('cmpStack',{type:'bar',data:{labels:wk,datasets:jobs.map((j,i)=>({label:j,backgroundColor:PAL[i%PAL.length],data:wk.map(w=>tot[w]?(cell[w+'|'+j]||0)/tot[w]*100:0)}))},options:{...bo,plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.raw,1)+'%'}}},scales:{x:{stacked:true,ticks:{font:{size:9}},grid:{display:false}},y:{stacked:true,max:100,ticks:{callback:x=>x+'%',font:{size:10}},grid:{color:'#EEF1F6'}}}}});
+  // trend per-bay top8
+  const top=wk.slice(0,8);const c2={};rows.forEach(r=>{if(!wk.includes(r.워크샵))return;const k=r.워크샵+'|'+r[pp.k];if(!c2[k])c2[k]=blank();ac(c2[k],r);});
+  mk('cmpTrend',{type:'line',data:{labels:pp.list,datasets:top.map((w,i)=>({label:w,borderColor:retColor(w),backgroundColor:retColor(w),tension:.3,borderWidth:2,pointRadius:2,data:pp.list.map(p=>{const o=c2[w+'|'+p];return o&&BAY[w]?o.합계/BAY[w]:0;})}))},options:{...bo,plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+MM(c.raw)+' 백만/베이'}}},scales:{y:{ticks:{callback:x=>MM(x),font:{size:10}},grid:{color:'#EEF1F6'}},x:{grid:{display:false}}}}});
+  // composite score
+  const mrRank={},bayRank={};const byMr=wk.slice().sort((a,b)=>marginRate(wm[b])-marginRate(wm[a]));const byBay=wk.slice().sort((a,b)=>bayVal(b)-bayVal(a));
+  byMr.forEach((w,i)=>mrRank[w]=i+1);byBay.forEach((w,i)=>bayRank[w]=i+1);
+  const score={};wk.forEach(w=>score[w]=(mrRank[w]+bayRank[w])/2);
+  const ranked=wk.slice().sort((a,b)=>score[a]-score[b]);
+  let sh='<thead><tr><th class="c">순위</th><th>지점</th><th>리테일러</th><th class="c">규모</th><th>베이당매출</th><th>마진율순위</th><th>베이당순위</th></tr></thead><tbody>';
+  ranked.forEach((w,i)=>{const cls=i<3?'top1':(i>=ranked.length-3?'bot1':'');const icon=i<3?['🥇','🥈','🥉'][i]:(i>=ranked.length-3?'🚩':'');
+    sh+=`<tr class="${cls}"><td class="c">${icon||(i+1)}</td><td>${w}</td><td class="c"><span class="tag r">${ret(w)}</span></td><td class="c"><span class="tag sz">${szOf(w)}</span></td><td>${MM(bayVal(w))}</td><td class="c">${mrRank[w]}</td><td class="c">${bayRank[w]}</td></tr>`;});
+  sh+='</tbody>';document.getElementById('cmpScoreTable').innerHTML=sh;
+  // table
+  let h='<thead><tr><th>리테일러</th><th>워크샵</th><th class="c">규모</th><th class="c">베이</th><th>매출</th><th>마진율</th><th class="c">VIN</th><th>베이당매출</th></tr></thead><tbody>';
+  const tk=wk.slice().sort((a,b)=>ret(a)===ret(b)?a.localeCompare(b):ret(a).localeCompare(ret(b)));
+  tk.forEach(w=>{const o=wm[w],bay=BAY[w];h+=`<tr><td><span class="tag r">${ret(w)}</span></td><td>${w}</td><td class="c"><span class="tag sz">${szOf(w)}</span></td><td class="c">${bay==null?'-':bay}</td><td>${MM(o.합계)}</td><td>${pct(marginRate(o))}</td><td class="c">${fmt(o.vin.size)}</td><td>${bay?MM(o.합계/bay):'-'}</td></tr>`;});
+  const t=agg(rows.filter(r=>wk.includes(r.워크샵)));h+=`<tr class="tot"><td>합계</td><td>${wk.length}개</td><td></td><td class="c">${wk.reduce((s,w)=>s+(BAY[w]||0),0)}</td><td>${MM(t.합계)}</td><td>${pct(marginRate(t))}</td><td class="c">${fmt(t.vin.size)}</td><td></td></tr></tbody>`;
+  document.getElementById('cmpTable').innerHTML=h;
+}
+
+// ===== DRILL =====
+function renderDrill(){if(!ROWS.length)return;const w=v('drillWs');if(!w)return;const pp=P();
+  const rowsAll=ROWS.filter(r=>SELM.has(r.월)&&r.워크샵===w);const rows=excludeIns(rowsAll,DR_INC);
+  const t=agg(rows);
+  const mkt=excludeIns(base(),DR_INC);const nWs=new Set(mkt.map(r=>r.워크샵)).size||1;const mt=agg(mkt);
+  document.getElementById('drillMeta').innerHTML=`<span class="tag r">${ret(w)}</span> · 규모 <span class="tag sz">${szOf(w)}</span> · 베이 ${BAY[w]==null?'-':BAY[w]} · 마켓 ${nWs}개 지점 중`+(DR_INC?'':' · <span class="tag acc">사고수리 제외</span>');
+  const bay=BAY[w]||0;
+  const stats=[
+    {l:'매출',v:MM(t.합계)+'<span style="font-size:12px;color:#6B7A8D"> 백만</span>',d:'마켓평균 대비 '+pctDelta(t.합계,mt.합계/nWs)},
+    {l:'마진율',v:pct(marginRate(t)),d:'마켓 '+pct(marginRate(mt))},
+    {l:'입고 VIN',v:fmt(t.vin.size)+'<span style="font-size:12px;color:#6B7A8D"> 대</span>',d:'사고 '+fmt(t.accVin.size)+' / 제외 '+fmt(t.vin.size-t.accVin.size)},
+    {l:'베이당 매출',v:bay?MM(t.합계/bay):'-',d:bay?'마켓평균 대비 '+pctDelta(t.합계/bay,(mt.합계/DIMS['워크샵'].reduce((s,x)=>s+(BAY[x]||0),0))):'베이 미상'},
+    {l:'RO',v:fmt(t.ro.size)+'<span style="font-size:12px;color:#6B7A8D"> 건</span>',d:'사고포함 '+fmt(t.accRo.size)+'건'}];
+  document.getElementById('drillStats').innerHTML=stats.map(s=>`<div class="stat"><div class="l">${s.l}</div><div class="v">${s.v}</div><div class="d" style="color:#6B7A8D">${s.d}</div></div>`).join('');
+  const pm=gAgg(rows,pp.k);
+  mk('drTrend',{data:{labels:pp.list,datasets:[
+    {type:'bar',label:'부품금액',data:pp.list.map(p=>pm[p]?pm[p].부품판가:0),backgroundColor:'#2E6BB8',borderRadius:4,yAxisID:'y',datalabels:{display:true,color:'#2E6BB8',font:{weight:700,size:10},anchor:'end',align:'top',formatter:v=>v?MM(v):''}},
+    {type:'bar',label:'공임금액',data:pp.list.map(p=>pm[p]?pm[p].공임판가:0),backgroundColor:'#E8833A',borderRadius:4,yAxisID:'y',datalabels:{display:true,color:'#E8833A',font:{weight:700,size:10},anchor:'end',align:'top',formatter:v=>v?MM(v):''}},
+    {type:'line',label:'마진액',data:pp.list.map(p=>pm[p]?marginAmt(pm[p]):0),borderColor:'#3FA66A',backgroundColor:'#3FA66A',yAxisID:'y',tension:.3,borderWidth:3,pointRadius:4,pointBackgroundColor:'#3FA66A',order:0,datalabels:{display:true,color:'#1B7A3E',font:{weight:800,size:10},anchor:'end',align:'top',offset:6,formatter:v=>v?MM(v):''}}]},
+    options:{...bo,plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+MM(c.raw)+' 백만'}}},scales:{y:{ticks:{callback:x=>MM(x),font:{size:10}},grid:{color:'#EEF1F6'}},x:{grid:{display:false}}}}});
+  const jobs=azKeys(gAgg(rows,'잡코드'));const cell={};rows.forEach(r=>{cell[r.잡코드+'|'+r[pp.k]]=(cell[r.잡코드+'|'+r[pp.k]]||0)+r.합계;});
+  const ptot={};pp.list.forEach(p=>ptot[p]=jobs.reduce((s,j)=>s+(cell[j+'|'+p]||0),0));
+  mk('drJobMix',{type:'bar',data:{labels:pp.list,datasets:jobs.map((j,i)=>({label:j,backgroundColor:PAL[i%PAL.length],data:pp.list.map(p=>ptot[p]?(cell[j+'|'+p]||0)/ptot[p]*100:0)}))},options:{...bo,plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.raw,1)+'%'}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,max:100,ticks:{callback:x=>x+'%',font:{size:10}},grid:{color:'#EEF1F6'}}}}});
+  mk('drMr',{type:'line',data:{labels:pp.list,datasets:[{label:'마진율',data:pp.list.map(p=>pm[p]?marginRate(pm[p])*100:0),borderColor:'#3FA66A',backgroundColor:'rgba(63,166,106,.12)',fill:true,tension:.3,borderWidth:3,pointRadius:3,datalabels:dlPctTop}]},options:{...bo,plugins:{legend:{display:false},datalabels:dlPctTop},scales:{y:{ticks:{callback:x=>x+'%',font:{size:10}},grid:{color:'#EEF1F6'}},x:{grid:{display:false}}}}});
+  mk('drVin',{data:{labels:pp.list,datasets:[
+    {type:'bar',label:'제외',data:pp.list.map(p=>pm[p]?pm[p].vin.size-pm[p].accVin.size:0),backgroundColor:'#2E6BB8',borderRadius:3,stack:'vv',datalabels:dlOff},
+    {type:'bar',label:'사고',data:pp.list.map(p=>pm[p]?pm[p].accVin.size:0),backgroundColor:'#C0392B',borderRadius:3,stack:'vv',datalabels:dlOff},
+    {type:'line',label:'합계',data:pp.list.map(p=>pm[p]?pm[p].vin.size:0),borderWidth:0,pointRadius:0,backgroundColor:'rgba(0,0,0,0)',borderColor:'rgba(0,0,0,0)',datalabels:dlCntTop}]},
+    options:{...bo,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{font:{size:10}},grid:{color:'#EEF1F6'}}}}});
+  const sm=gAgg(rows,'세그먼트');const sk=azKeys(sm);
+  mk('drSeg',{type:'doughnut',data:{labels:sk,datasets:[{data:sk.map(x=>sm[x].vin.size),backgroundColor:sk.map((_,i)=>PAL[i%PAL.length]),borderWidth:2,borderColor:'#fff'}]},options:(()=>{const o=pieOpts('VIN');o.plugins.ct.text=fmt(t.vin.size);o.plugins.ct.sub='VIN';o.plugins.tooltip={callbacks:{label:c=>c.label+': '+fmt(c.raw)+'대'}};return o;})()});
+  const mm2=gAgg(rows,'모델');const mk3=azKeys(mm2).sort((a,b)=>mm2[b].vin.size-mm2[a].vin.size).slice(0,8);
+  mk('drModel',{type:'bar',data:{labels:mk3,datasets:[{data:mk3.map(x=>mm2[x].vin.size),backgroundColor:'#5B9BD5',borderRadius:4,datalabels:dlCntTop}]},options:{...bo,indexAxis:'y',plugins:{legend:{display:false},datalabels:{...dlCntTop,anchor:'end',align:'right'},tooltip:{callbacks:{label:c=>fmt(c.raw)+'대'}}},scales:{x:{ticks:{font:{size:10}},grid:{color:'#EEF1F6'}},y:{ticks:{font:{size:10}},grid:{display:false}}}}});
+  let h='<thead><tr><th>월</th><th>매출</th><th>마진율</th><th class="c">VIN</th><th class="c">사고</th><th class="c">RO</th></tr></thead><tbody>';
+  pp.list.forEach(p=>{const o=pm[p]||blank();h+=`<tr><td>${p}</td><td>${MM(o.합계)}</td><td>${pct(marginRate(o))}</td><td class="c">${fmt(o.vin.size)}</td><td class="c">${fmt(o.accVin.size)}</td><td class="c">${fmt(o.ro.size)}</td></tr>`;});
+  document.getElementById('drTable').innerHTML=h+'</tbody>';
+  renderDrillSegJob();
+}
+function renderDrillSegJob(){
+  const w=v('drillWs');if(!w)return;const mo=v('drSegMonth');if(!mo)return;
+  const rowsAll=ROWS.filter(r=>r.워크샵===w&&r.월===mo);const rows=excludeIns(rowsAll,DR_INC);
+  const segs=azKeys(gAgg(rows,'세그먼트'));const jobs=azKeys(gAgg(rows,'잡코드'));
+  const cell={};rows.forEach(r=>{cell[r.세그먼트+'|'+r.잡코드]=(cell[r.세그먼트+'|'+r.잡코드]||0)+r.합계;});
+  const segTot={};segs.forEach(s=>segTot[s]=jobs.reduce((a,j)=>a+(cell[s+'|'+j]||0),0));
+  const t=agg(rows);
+  document.getElementById('drSegCap').textContent=mo+' 총 매출 '+MM(t.합계)+'백만 — 세그먼트별 분해 (백만원, 값표시)'+(DR_INC?'':' · 사고수리 제외');
+  mk('drSegJob',{data:{labels:segs,datasets:jobs.map((j,i)=>({type:'bar',label:j,backgroundColor:PAL[i%PAL.length],stack:'sg',data:segs.map(s=>cell[s+'|'+j]||0),datalabels:{display:true,color:'#fff',font:{weight:700,size:9},formatter:v=>v>=Math.max(1,t.합계*0.02)?MM(v):''}})).concat([{type:'line',label:'세그먼트 합계',data:segs.map(s=>segTot[s]),borderWidth:0,pointRadius:0,backgroundColor:'rgba(0,0,0,0)',borderColor:'rgba(0,0,0,0)',datalabels:dlWonTop}])},
+    options:{...bo,plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+MM(c.raw)+' 백만'}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:x=>MM(x),font:{size:10}},grid:{color:'#EEF1F6'}}}}});
+}
+function pctDelta(a,b){if(!b)return '-';const d=(a-b)/b;return '<span class="delta '+(d>=0?'up':'dn')+'">'+(d>=0?'▲':'▼')+fmt(Math.abs(d)*100,1)+'%</span>';}
+
+// ===== VEHICLE =====
+function renderVEH(){const rows=base(),pp=P();const dim=v('vehDim');
+  if(dim==='월'){const mm=gAgg(rows,pp.k);mk('vehTrend',{data:{labels:pp.list,datasets:[
+    {type:'bar',label:'일반차',data:pp.list.map(p=>mm[p]?mm[p].vin.size-mm[p].accVin.size:0),backgroundColor:'#2E6BB8',borderRadius:4,stack:'vt',datalabels:dlOff},
+    {type:'bar',label:'사고차(INS)',data:pp.list.map(p=>mm[p]?mm[p].accVin.size:0),backgroundColor:'#C0392B',borderRadius:4,stack:'vt',datalabels:dlOff},
+    {type:'line',label:'합계',data:pp.list.map(p=>mm[p]?mm[p].vin.size:0),borderWidth:0,pointRadius:0,backgroundColor:'rgba(0,0,0,0)',borderColor:'rgba(0,0,0,0)',datalabels:dlCntTop}]},options:{...bo,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{font:{size:10}},grid:{color:'#EEF1F6'}}}}});}
+  else{const groups=[...new Set(rows.map(r=>r[dim]))].sort();const gm=gAgg(rows,dim);
+    mk('vehTrend',{type:'bar',data:{labels:groups,datasets:[
+      {label:'일반차',data:groups.map(g=>gm[g].vin.size-gm[g].accVin.size),backgroundColor:dim==='워크샵'?groups.map(retColor):'#2E6BB8',stack:'vt',datalabels:dlOff},
+      {label:'사고차(INS)',data:groups.map(g=>gm[g].accVin.size),backgroundColor:'#C0392B',stack:'vt',datalabels:dlOff}]},
+      options:{...bo,plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.raw)+'대'}}},scales:{x:{stacked:true,ticks:{font:{size:9}},grid:{display:false}},y:{stacked:true,ticks:{font:{size:10}},grid:{color:'#EEF1F6'}}}}});}
+  const t=agg(rows);
+  const sgDim=v('vehSegDim');renderVehSegDim(rows,pp,sgDim);
+  const mm2=gAgg(rows,'모델');const mk3=azKeys(mm2).sort((a,b)=>mm2[b].vin.size-mm2[a].vin.size).slice(0,10);
+  mk('vehModel',{type:'doughnut',data:{labels:mk3,datasets:[{data:mk3.map(x=>mm2[x].vin.size),backgroundColor:mk3.map((_,i)=>PAL[i%PAL.length]),borderWidth:2,borderColor:'#fff'}]},options:(()=>{const o=pieOpts('Model');o.plugins.ct.text='모델';o.plugins.tooltip={callbacks:{label:c=>c.label+': '+fmt(c.raw)+'대'}};return o;})()});
+  const wm=gAgg(rows,'워크샵');const wk=azKeys(wm);
+  mk('vehSplit',{type:'bar',data:{labels:wk,datasets:[{label:'제외',data:wk.map(k=>wm[k].vin.size-wm[k].accVin.size),backgroundColor:'#2E6BB8'},{label:'사고',data:wk.map(k=>wm[k].accVin.size),backgroundColor:'#C0392B'}]},options:{...bo,plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.raw)+'대'}}},scales:{x:{stacked:true,ticks:{font:{size:8}},grid:{display:false}},y:{stacked:true,ticks:{font:{size:10}},grid:{color:'#EEF1F6'}}}}});
+  const sk0=azKeys(gAgg(rows,'세그먼트'));
+  mk('vehSeg',{type:'doughnut',data:{labels:sk0,datasets:[{data:sk0.map(x=>gAgg(rows,'세그먼트')[x].vin.size),backgroundColor:sk0.map((_,i)=>PAL[i%PAL.length]),borderWidth:2,borderColor:'#fff'}]},options:(()=>{const o=pieOpts('Seg');o.plugins.ct.text=fmt(t.vin.size);o.plugins.ct.sub='VIN';o.plugins.tooltip={callbacks:{label:c=>c.label+': '+fmt(c.raw)+'대'}};return o;})()});
+  jobShareChart('vehSegJob','세그먼트',sk0);
+  jobShareChart('vehModelJob','모델',mk3);
+}
+function renderVehSegDim(rows,pp,dim){
+  if(dim==='마켓'){const sm=gAgg(rows,'세그먼트');const sk=azKeys(sm);const t=agg(rows);
+    mk('vehSegDimChart',{type:'doughnut',data:{labels:sk,datasets:[{data:sk.map(x=>sm[x].vin.size),backgroundColor:sk.map((_,i)=>PAL[i%PAL.length]),borderWidth:2,borderColor:'#fff'}]},options:(()=>{const o=pieOpts('마켓 전체');o.plugins.ct.text=fmt(t.vin.size);o.plugins.ct.sub='VIN';o.plugins.tooltip={callbacks:{label:c=>c.label+': '+fmt(c.raw)+'대 ('+fmt(c.parsed/c.dataset.data.reduce((a,b)=>a+b,0)*100,1)+'%)'}};return o;})()});return;}
+  const groups=dim==='월'?pp.list:[...new Set(rows.map(r=>r[dim]))].sort();
+  const segs=azKeys(gAgg(rows,'세그먼트'));
+  const cell={};rows.forEach(r=>{const k=r[dim]+'|'+r.세그먼트;cell[k]=(cell[k]||0)+1;}); // count rows w/ unique vin approx -> better use vin set
+  // accurate: build per group per seg vin sets
+  const setMap={};rows.forEach(r=>{const k=r[dim]+'|'+r.세그먼트;if(!setMap[k])setMap[k]=new Set();if(r.vin)setMap[k].add(r.vin);});
+  const tot={};groups.forEach(g=>tot[g]=segs.reduce((s,sg)=>s+((setMap[g+'|'+sg]||new Set()).size),0));
+  mk('vehSegDimChart',{type:'bar',data:{labels:groups,datasets:segs.map((sg,i)=>({label:sg,backgroundColor:PAL[i%PAL.length],data:groups.map(g=>{const n=(setMap[g+'|'+sg]||new Set()).size;return tot[g]?n/tot[g]*100:0;})}))},options:{...bo,plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.raw,1)+'%'}}},scales:{x:{stacked:true,ticks:{font:{size:9}},grid:{display:false}},y:{stacked:true,max:100,ticks:{callback:x=>x+'%',font:{size:10}},grid:{color:'#EEF1F6'}}}}});
+}
+function jobShareChart(id,dim,keys){const rows=base();const jobs=azKeys(gAgg(rows,'잡코드'));const cell={};rows.forEach(r=>{if(!keys.includes(r[dim]))return;cell[r[dim]+'|'+r.잡코드]=(cell[r[dim]+'|'+r.잡코드]||0)+r.합계;});
+  const tot={};keys.forEach(k=>tot[k]=jobs.reduce((s,j)=>s+(cell[k+'|'+j]||0),0));
+  mk(id,{type:'bar',data:{labels:keys,datasets:jobs.map((j,i)=>({label:j,backgroundColor:PAL[i%PAL.length],data:keys.map(k=>tot[k]?(cell[k+'|'+j]||0)/tot[k]*100:0)}))},options:{...bo,indexAxis:'y',plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.raw,1)+'%'}}},scales:{x:{stacked:true,max:100,ticks:{callback:x=>x+'%',font:{size:10}},grid:{color:'#EEF1F6'}},y:{stacked:true,ticks:{font:{size:10}},grid:{display:false}}}}});}
+
+// ===== JOBCODE =====
+function renderJOB(){const rows=base(),pp=P();const jobs=azKeys(gAgg(rows,'잡코드'));
+  const cell={};rows.forEach(r=>{cell[r.잡코드+'|'+r[pp.k]]=(cell[r.잡코드+'|'+r[pp.k]]||0)+r.합계;});
+  const ptot={};pp.list.forEach(p=>ptot[p]=jobs.reduce((s,j)=>s+(cell[j+'|'+p]||0),0));
+  mk('jobMix',{type:'bar',data:{labels:pp.list,datasets:jobs.map((j,i)=>({label:j,backgroundColor:PAL[i%PAL.length],data:pp.list.map(p=>ptot[p]?(cell[j+'|'+p]||0)/ptot[p]*100:0)}))},options:{...bo,plugins:{...bo.plugins,tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.raw,1)+'%'}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,max:100,ticks:{callback:x=>x+'%',font:{size:10}},grid:{color:'#EEF1F6'}}}}});
+  const jm=gAgg(rows,'잡코드');const jk=jobs.slice().sort((a,b)=>jm[b].합계-jm[a].합계);const t=agg(rows);
+  mk('jobPie',{type:'doughnut',data:{labels:jk,datasets:[{data:jk.map(x=>jm[x].합계),backgroundColor:jk.map((_,i)=>PAL[i%PAL.length]),borderWidth:2,borderColor:'#fff'}]},options:(()=>{const o=pieOpts('매출');o.plugins.ct.text=MM(t.합계);o.plugins.ct.sub='백만';return o;})()});
+  let h='<thead><tr><th>JOB CODE</th><th class="c">RO</th><th>매출</th><th>부품원가</th><th>마진액</th><th>마진율</th><th class="c">VIN</th><th>비중</th></tr></thead><tbody>';
+  jk.forEach(j=>{const o=jm[j],sh=t.합계?o.합계/t.합계:0;h+=`<tr><td>${j}</td><td class="c">${fmt(o.ro.size)}</td><td>${MM(o.합계)}</td><td>${MM(o.부품원가)}</td><td>${MM(marginAmt(o))}</td><td>${pct(marginRate(o))}</td><td class="c">${fmt(o.vin.size)}</td><td>${pct(sh)}</td></tr>`;});
+  h+=`<tr class="tot"><td>합계</td><td class="c">${fmt(t.ro.size)}</td><td>${MM(t.합계)}</td><td>${MM(t.부품원가)}</td><td>${MM(marginAmt(t))}</td><td>${pct(marginRate(t))}</td><td class="c">${fmt(t.vin.size)}</td><td>100.0%</td></tr></tbody>`;
+  document.getElementById('jobTable').innerHTML=h;
+}
+
+boot();
+</script>
+</body>
+</html>
